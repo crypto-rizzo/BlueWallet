@@ -159,8 +159,8 @@ class TorSocket {
       console.log('started tor');
       const iWillConnectISwear = tor.createTcpConnection({ target: host + ':' + port, connectionTimeout: 15000 }, (data, err) => {
         if (err) {
-          console.log('TOR socket onData error, closing: ', err);
-          this._passOnEvent('close', err);
+          console.log('TOR socket onData error: ', err);
+          this._passOnEvent('error', err);
           return;
         }
         this._passOnEvent('data', data);
@@ -173,6 +173,7 @@ class TorSocket {
       if (!this._socket) {
         console.log('connecting TOR socket failed'); // either sleep expired or connect threw an exception
         this._passOnEvent('error', 'connecting TOR socket failed');
+        await tor.stopIfRunning();
         return false;
       }
 

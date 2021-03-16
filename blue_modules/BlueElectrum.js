@@ -1,6 +1,6 @@
 /* global alert */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform, Alert } from 'react-native';
+import { Alert } from 'react-native';
 import { AppStorage, LegacyWallet, SegwitBech32Wallet, SegwitP2SHWallet } from '../class';
 import DefaultPreference from 'react-native-default-preference';
 import RNWidgetCenter from 'react-native-widget-center';
@@ -78,17 +78,16 @@ async function connectMain() {
       usingPeer.ssl ? 'tls' : 'tcp',
     );
     mainClient.onError = function (e) {
-      if (Platform.OS === 'android' && mainConnected) {
-        // android sockets are buggy and dont always issue CLOSE event, which actually makes the persistence code to reconnect.
-        // so lets do it manually, but only if we were previously connected (mainConnected), otherwise theres other
+      console.log('electrum mainClient.onError():', e.message);
+      if (mainConnected) {
+        // most likely got a timeout from electrum ping. lets reconnect
+        // but only if we were previously connected (mainConnected), otherwise theres other
         // code which does connection retries
         mainClient.close();
         mainConnected = false;
         setTimeout(connectMain, usingPeer.host.endsWith('.onion') ? 3000 : 500);
         console.log('reconnecting after socket error');
-        return;
       }
-      mainConnected = false;
     };
     const ver = await mainClient.initElectrum({ client: 'bluewallet', version: '1.4' });
     if (ver && ver[0]) {
