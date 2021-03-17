@@ -75,23 +75,27 @@ class Torsbee {
     return new Promise((resolve, reject) => {
       (async () => {
         console.log('testSocket...');
-        await tor.startIfNotStarted();
-        const target = 'v7gtzf7nua6hdmb2wtqaqioqmesdb4xrlly4zwr7bvayxv2bpg665pqd.onion:50001';
-        const conn = await tor.createTcpConnection({ target }, (data, err) => {
-          if (err) {
-            throw new Error(err);
-          }
-          const json = JSON.parse(data);
-          if (!json || typeof json.result === 'undefined')
-            return reject(new Error('Unexpected response from TOR socket: ' + JSON.stringify(json)));
+        try {
+          await tor.startIfNotStarted();
+          const target = 'v7gtzf7nua6hdmb2wtqaqioqmesdb4xrlly4zwr7bvayxv2bpg665pqd.onion:50001';
+          const conn = await tor.createTcpConnection({ target }, (data, err) => {
+            if (err) {
+              return reject(new Error(err));
+            }
+            const json = JSON.parse(data);
+            if (!json || typeof json.result === 'undefined')
+              return reject(new Error('Unexpected response from TOR socket: ' + JSON.stringify(json)));
 
-          conn.close();
-          resolve();
-        });
+            conn.close();
+            resolve();
+          });
 
-        await conn.write(
-          `{ "id": 1, "method": "blockchain.scripthash.get_balance", "params": ["716decbe1660861c3d93906cb1d98ee68b154fd4d23aed9783859c1271b52a9c"] }\n`,
-        );
+          await conn.write(
+            `{ "id": 1, "method": "blockchain.scripthash.get_balance", "params": ["716decbe1660861c3d93906cb1d98ee68b154fd4d23aed9783859c1271b52a9c"] }\n`,
+          );
+        } catch (error) {
+          reject(error);
+        }
       })();
     });
   }
