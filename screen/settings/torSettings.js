@@ -9,9 +9,6 @@ import loc from '../../loc';
 const torrific = require('../../blue_modules/torrific');
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
   torSupported: {
     color: '#81868e',
   },
@@ -75,7 +72,7 @@ const TorSettings = () => {
   }
 
   return (
-    <SafeBlueArea forceInset={{ horizontal: 'always' }} style={styles.root}>
+    <SafeBlueArea>
       <BlueCard>
         <BlueText>Daemon Status: {daemonStatus}</BlueText>
       </BlueCard>

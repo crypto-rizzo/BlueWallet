@@ -71,7 +71,7 @@ class Torsbee {
     return response;
   }
 
-  async testSocket() {
+  testSocket() {
     return new Promise((resolve, reject) => {
       (async () => {
         console.log('testSocket...');
@@ -249,7 +249,7 @@ module.exports.startIfNotStarted = async () => {
 
 module.exports.testSocket = async () => {
   const c = new Torsbee();
-  return await c.testSocket();
+  return c.testSocket();
 };
 
 module.exports.testHttp = async () => {
