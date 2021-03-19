@@ -65,7 +65,6 @@ async function updateExchangeRate() {
     response = await api.get(fiatServerResponse.endPoint());
     fiatServerResponse.isErrorFound(response);
   } catch (Err) {
-    console.warn(Err);
     const lastSavedExchangeRate = JSON.parse(await AsyncStorage.getItem(AppStorage.EXCHANGE_RATES));
     exchangeRates['BTC_' + preferredFiatCurrency.endPointKey] = lastSavedExchangeRate['BTC_' + preferredFiatCurrency.endPointKey] * 1;
     return;

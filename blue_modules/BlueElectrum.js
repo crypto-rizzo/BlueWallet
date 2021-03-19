@@ -85,8 +85,10 @@ async function connectMain() {
         // code which does connection retries
         mainClient.close();
         mainConnected = false;
-        setTimeout(connectMain, usingPeer.host.endsWith('.onion') ? 3000 : 500);
+        // dropping `mainConnected` flag ensures there wont be reconnection race condition if several
+        // errors triggered
         console.log('reconnecting after socket error');
+        setTimeout(connectMain, usingPeer.host.endsWith('.onion') ? 4000 : 500);
       }
     };
     const ver = await mainClient.initElectrum({ client: 'bluewallet', version: '1.4' });
@@ -118,6 +120,7 @@ async function connectMain() {
     if (connectionAttempt >= 5) {
       presentNetworkErrorAlert(usingPeer);
     } else {
+      console.log('reconnection attempt #', connectionAttempt);
       setTimeout(connectMain, 500);
     }
   }
@@ -536,18 +539,19 @@ module.exports.waitTillConnected = async function () {
     waitTillConnectedInterval = setInterval(() => {
       if (mainConnected) {
         clearInterval(waitTillConnectedInterval);
-        resolve(true);
+        return resolve(true);
       }
 
       if (wasConnectedAtLeastOnce && mainClient.status === 1) {
         clearInterval(waitTillConnectedInterval);
         mainConnected = true;
-        resolve(true);
+        return resolve(true);
       }
 
-      if (retriesCounter++ >= 30) {
+      if (wasConnectedAtLeastOnce && retriesCounter++ >= 30) {
+        // `wasConnectedAtLeastOnce` needed otherwise theres gona be a race condition with the code that connects
+        // electrum during app startup
         clearInterval(waitTillConnectedInterval);
-        connectionAttempt = 0;
         presentNetworkErrorAlert();
         reject(new Error('Waiting for Electrum connection timeout'));
       }

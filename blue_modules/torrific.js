@@ -156,8 +156,8 @@ class TorSocket {
         await tor.startIfNotStarted();
       } catch (e) {
         console.warn('Could not bootstrap TOR', e);
-        this._passOnEvent('error', 'Could not bootstrap TOR');
         await tor.stopIfRunning();
+        this._passOnEvent('error', 'Could not bootstrap TOR');
         return false;
       }
       console.log('started tor');
@@ -176,8 +176,8 @@ class TorSocket {
 
       if (!this._socket) {
         console.log('connecting TOR socket failed'); // either sleep expired or connect threw an exception
-        this._passOnEvent('error', 'connecting TOR socket failed');
         await tor.stopIfRunning();
+        this._passOnEvent('error', 'connecting TOR socket failed');
         return false;
       }
 
