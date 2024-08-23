@@ -1,14 +1,8 @@
-import { BitcoinUnit, Chain } from '../../models/bitcoinUnits';
 import b58 from 'bs58check';
 import createHash from 'create-hash';
-import { CreateTransactionResult, CreateTransactionUtxo, Transaction, Utxo } from './types';
 
-type WalletStatics = {
-  type: string;
-  typeReadable: string;
-  segwitType?: 'p2wpkh' | 'p2sh(p2wpkh)';
-  derivationPath?: string;
-};
+import { BitcoinUnit, Chain } from '../../models/bitcoinUnits';
+import { CreateTransactionResult, CreateTransactionUtxo, Transaction, Utxo } from './types';
 
 type WalletWithPassphrase = AbstractWallet & { getPassphrase: () => string };
 type UtxoMetadata = {
@@ -17,8 +11,12 @@ type UtxoMetadata = {
 };
 
 export class AbstractWallet {
-  static type = 'abstract';
-  static typeReadable = 'abstract';
+  static readonly type = 'abstract';
+  static readonly typeReadable = 'abstract';
+  // @ts-ignore: override
+  public readonly type = AbstractWallet.type;
+  // @ts-ignore: override
+  public readonly typeReadable = AbstractWallet.typeReadable;
 
   static fromJson(obj: string): AbstractWallet {
     const obj2 = JSON.parse(obj);
@@ -31,16 +29,14 @@ export class AbstractWallet {
     return temp;
   }
 
-  type: string;
-  typeReadable: string;
   segwitType?: 'p2wpkh' | 'p2sh(p2wpkh)';
   _derivationPath?: string;
   label: string;
   secret: string;
   balance: number;
-  unconfirmed_balance: number; // eslint-disable-line camelcase
+  unconfirmed_balance: number;
   _address: string | false;
-  utxo: Utxo[];
+  _utxo: Utxo[];
   _lastTxFetch: number;
   _lastBalanceFetch: number;
   preferredBalanceUnit: BitcoinUnit;
@@ -49,21 +45,16 @@ export class AbstractWallet {
   userHasSavedExport: boolean;
   _hideTransactionsInWalletsList: boolean;
   _utxoMetadata: Record<string, UtxoMetadata>;
-  use_with_hardware_wallet: boolean; // eslint-disable-line camelcase
-  masterFingerprint: number | false;
+  use_with_hardware_wallet: boolean;
+  masterFingerprint: number;
 
   constructor() {
-    const Constructor = (this.constructor as unknown) as WalletStatics;
-
-    this.type = Constructor.type;
-    this.typeReadable = Constructor.typeReadable;
-    this.segwitType = Constructor.segwitType;
     this.label = '';
     this.secret = ''; // private key or recovery phrase
     this.balance = 0;
     this.unconfirmed_balance = 0;
     this._address = false; // cache
-    this.utxo = [];
+    this._utxo = [];
     this._lastTxFetch = 0;
     this._lastBalanceFetch = 0;
     this.preferredBalanceUnit = BitcoinUnit.BTC;
@@ -73,7 +64,7 @@ export class AbstractWallet {
     this._hideTransactionsInWalletsList = false;
     this._utxoMetadata = {};
     this.use_with_hardware_wallet = false;
-    this.masterFingerprint = false;
+    this.masterFingerprint = 0;
   }
 
   /**
@@ -84,7 +75,7 @@ export class AbstractWallet {
   }
 
   getID(): string {
-    const thisWithPassphrase = (this as unknown) as WalletWithPassphrase;
+    const thisWithPassphrase = this as unknown as WalletWithPassphrase;
     const passphrase = thisWithPassphrase.getPassphrase ? thisWithPassphrase.getPassphrase() : '';
     const path = this._derivationPath ?? '';
     const string2hash = this.type + this.getSecret() + passphrase + path;
@@ -143,6 +134,18 @@ export class AbstractWallet {
     return BitcoinUnit.BTC;
   }
 
+  async allowOnchainAddress(): Promise<boolean> {
+    throw new Error('allowOnchainAddress: Not implemented');
+  }
+
+  allowBIP47(): boolean {
+    return false;
+  }
+
+  switchBIP47(value: boolean): void {
+    throw new Error('switchBIP47: not implemented');
+  }
+
   allowReceive(): boolean {
     return true;
   }
@@ -151,11 +154,11 @@ export class AbstractWallet {
     return true;
   }
 
-  allowRBF(): boolean {
+  allowSilentPaymentSend(): boolean {
     return false;
   }
 
-  allowHodlHodlTrading(): boolean {
+  allowRBF(): boolean {
     return false;
   }
 
@@ -207,6 +210,7 @@ export class AbstractWallet {
   }
 
   setSecret(newSecret: string): this {
+    const origSecret = newSecret;
     this.secret = newSecret.trim().replace('bitcoin:', '').replace('BITCOIN:', '');
 
     if (this.secret.startsWith('BC1')) this.secret = this.secret.toLowerCase();
@@ -223,6 +227,16 @@ export class AbstractWallet {
         this._derivationPath = derivationPath;
       }
       this.secret = m[2];
+
+      if (derivationPath.startsWith("m/84'/0'/") && this.secret.toLowerCase().startsWith('xpub')) {
+        // need to convert xpub to zpub
+        this.secret = this._xpubToZpub(this.secret.split('/')[0]);
+      }
+
+      if (derivationPath.startsWith("m/49'/0'/") && this.secret.toLowerCase().startsWith('xpub')) {
+        // need to convert xpub to ypub
+        this.secret = this._xpubToYpub(this.secret);
+      }
     }
 
     try {
@@ -238,12 +252,13 @@ export class AbstractWallet {
         parsedSecret = JSON.parse(newSecret);
       }
       if (parsedSecret && parsedSecret.keystore && parsedSecret.keystore.xpub) {
-        let masterFingerprint: number | false = false;
+        let masterFingerprint: number = 0;
         if (parsedSecret.keystore.ckcc_xfp) {
           // It is a ColdCard Hardware Wallet
           masterFingerprint = Number(parsedSecret.keystore.ckcc_xfp);
         } else if (parsedSecret.keystore.root_fingerprint) {
           masterFingerprint = Number(parsedSecret.keystore.root_fingerprint);
+          if (!masterFingerprint) masterFingerprint = this.getMasterFingerprintFromHex(parsedSecret.keystore.root_fingerprint);
         }
         if (parsedSecret.keystore.label) {
           this.setLabel(parsedSecret.keystore.label);
@@ -265,6 +280,7 @@ export class AbstractWallet {
           ? parsedSecret.AccountKeyPath
           : `m/${parsedSecret.AccountKeyPath}`;
         if (parsedSecret.CoboVaultFirmwareVersion) this.use_with_hardware_wallet = true;
+        return this;
       }
     } catch (_) {}
 
@@ -277,6 +293,52 @@ export class AbstractWallet {
         this._derivationPath = "m/84'/0'/0'"; // Assume default BIP84 for native segwit wallets
       }
     }
+
+    // is it output descriptor?
+    if (this.secret.startsWith('wpkh(') || this.secret.startsWith('pkh(') || this.secret.startsWith('sh(')) {
+      const xpubIndex = Math.max(this.secret.indexOf('xpub'), this.secret.indexOf('ypub'), this.secret.indexOf('zpub'));
+      const fpAndPath = this.secret.substring(this.secret.indexOf('(') + 1, xpubIndex);
+      const xpub = this.secret.substring(xpubIndex).replace(/\(|\)/, '');
+      const pathIndex = fpAndPath.indexOf('/');
+      const path = 'm' + fpAndPath.substring(pathIndex);
+      const fp = fpAndPath.substring(0, pathIndex);
+
+      this._derivationPath = path;
+      const mfp = Buffer.from(fp, 'hex').reverse().toString('hex');
+      this.masterFingerprint = parseInt(mfp, 16);
+
+      if (this.secret.startsWith('wpkh(')) {
+        this.secret = this._xpubToZpub(xpub);
+      } else {
+        // nop
+        this.secret = xpub;
+      }
+    }
+
+    // is it new-wasabi.json exported from coldcard?
+    try {
+      const json = JSON.parse(origSecret);
+      if (json.MasterFingerprint && json.ExtPubKey) {
+        // technically we should allow choosing which format user wants, BIP44 / BIP49 / BIP84, but meh...
+        this.secret = this._xpubToZpub(json.ExtPubKey);
+        const mfp = Buffer.from(json.MasterFingerprint, 'hex').reverse().toString('hex');
+        this.masterFingerprint = parseInt(mfp, 16);
+        return this;
+      }
+    } catch (_) {}
+
+    // is it sparrow-export ?
+    try {
+      const json = JSON.parse(origSecret);
+      if (json.chain && json.chain === 'BTC' && json.xfp && json.bip84) {
+        // technically we should allow choosing which format user wants, BIP44 / BIP49 / BIP84, but meh...
+        this.secret = json.bip84._pub;
+        const mfp = Buffer.from(json.xfp, 'hex').reverse().toString('hex');
+        this.masterFingerprint = parseInt(mfp, 16);
+        this._derivationPath = json.bip84.deriv;
+        return this;
+      }
+    } catch (_) {}
 
     return this;
   }
@@ -300,14 +362,14 @@ export class AbstractWallet {
    * @deprecated
    * TODO: be more precise on the type
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   createTx(): any {
     throw Error('not implemented');
   }
 
   /**
    *
-   * @param utxos {Array.<{vout: Number, value: Number, txId: String, address: String}>} List of spendable utxos
+   * @param utxos {Array.<{vout: Number, value: Number, txid: String, address: String}>} List of spendable utxos
    * @param targets {Array.<{value: Number, address: String}>} Where coins are going. If theres only 1 target and that target has no value - this will send MAX to that address (respecting fee rate)
    * @param feeRate {Number} satoshi per byte
    * @param changeAddress {String} Excessive coins will go back to that address
@@ -347,6 +409,10 @@ export class AbstractWallet {
     return false;
   }
 
+  isBIP47Enabled(): boolean {
+    return false;
+  }
+
   async wasEverUsed(): Promise<boolean> {
     throw new Error('Not implemented');
   }
@@ -367,7 +433,7 @@ export class AbstractWallet {
    * @param {String} zpub
    * @returns {String} xpub
    */
-  static _zpubToXpub(zpub: string): string {
+  _zpubToXpub(zpub: string): string {
     let data = b58.decode(zpub);
     data = data.slice(4);
     data = Buffer.concat([Buffer.from('0488b21e', 'hex'), data]);
@@ -385,6 +451,22 @@ export class AbstractWallet {
     if (data.readUInt32BE() !== 0x049d7cb2) throw new Error('Not a valid ypub extended key!');
     data = data.slice(4);
     data = Buffer.concat([Buffer.from('0488b21e', 'hex'), data]);
+
+    return b58.encode(data);
+  }
+
+  _xpubToZpub(xpub: string): string {
+    let data = b58.decode(xpub);
+    data = data.slice(4);
+    data = Buffer.concat([Buffer.from('04b24746', 'hex'), data]);
+
+    return b58.encode(data);
+  }
+
+  _xpubToYpub(xpub: string): string {
+    let data = b58.decode(xpub);
+    data = data.slice(4);
+    data = Buffer.concat([Buffer.from('049d7cb2', 'hex'), data]);
 
     return b58.encode(data);
   }
@@ -417,5 +499,15 @@ export class AbstractWallet {
 
   isSegwit() {
     return false;
+  }
+
+  getMasterFingerprintFromHex(hexValue: string): number {
+    if (hexValue.length < 8) hexValue = '0' + hexValue;
+    const b = Buffer.from(hexValue, 'hex');
+    if (b.length !== 4) throw new Error('invalid fingerprint hex');
+
+    hexValue = hexValue[6] + hexValue[7] + hexValue[4] + hexValue[5] + hexValue[2] + hexValue[3] + hexValue[0] + hexValue[1];
+
+    return parseInt(hexValue, 16);
   }
 }

@@ -1,18 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, TextInput, Linking, StyleSheet, Alert, I18nManager } from 'react-native';
-import { Button } from 'react-native-elements';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import React, { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { RouteProp, useRoute } from '@react-navigation/native';
+import { Alert, I18nManager, Linking, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Button as ButtonRNElements } from '@rneui/themed';
 
-import navigationStyle, { NavigationOptionsGetter } from '../../components/navigationStyle';
-import { BlueButton, BlueButtonLink, BlueCard, BlueLoading, BlueSpacing20, BlueText, SafeBlueArea } from '../../BlueComponents';
-import { AppStorage } from '../../class';
-import { LightningCustodianWallet } from '../../class/wallets/lightning-custodian-wallet';
-import loc from '../../loc';
-import { useTheme } from '../../components/themes';
+import { BlueButtonLink, BlueCard, BlueLoading, BlueSpacing20, BlueText } from '../../BlueComponents';
+import { BlueApp } from '../../class';
 import DeeplinkSchemaMatch from '../../class/deeplink-schema-match';
-import { isTorCapable } from '../../blue_modules/environment';
-import alert from '../../components/Alert';
+import { LightningCustodianWallet } from '../../class/wallets/lightning-custodian-wallet';
+import presentAlert from '../../components/Alert';
+import { Button } from '../../components/Button';
+import { useTheme } from '../../components/themes';
+import { scanQrHelper } from '../../helpers/scan-qr';
+import loc from '../../loc';
 
 const styles = StyleSheet.create({
   uri: {
@@ -35,9 +35,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
   },
-  torSupported: {
-    color: '#81868e',
-  },
 });
 
 type LightingSettingsRouteProps = RouteProp<
@@ -49,13 +46,12 @@ type LightingSettingsRouteProps = RouteProp<
   'params'
 >;
 
-const LightningSettings: React.FC & { navigationOptions: NavigationOptionsGetter } = () => {
+const LightningSettings: React.FC = () => {
   const params = useRoute<LightingSettingsRouteProps>().params;
   const [isLoading, setIsLoading] = useState(true);
   const [URI, setURI] = useState<string>();
   const { colors } = useTheme();
   const route = useRoute();
-  const navigation = useNavigation();
   const styleHook = StyleSheet.create({
     uri: {
       borderColor: colors.formBorder,
@@ -65,7 +61,7 @@ const LightningSettings: React.FC & { navigationOptions: NavigationOptionsGetter
   });
 
   useEffect(() => {
-    AsyncStorage.getItem(AppStorage.LNDHUB)
+    AsyncStorage.getItem(BlueApp.LNDHUB)
       .then(value => setURI(value ?? undefined))
       .then(() => setIsLoading(false))
       .catch(() => setIsLoading(false));
@@ -104,36 +100,33 @@ const LightningSettings: React.FC & { navigationOptions: NavigationOptionsGetter
         // validating only if its not empty. empty means use default
       }
       if (URI) {
-        await AsyncStorage.setItem(AppStorage.LNDHUB, URI);
+        await AsyncStorage.setItem(BlueApp.LNDHUB, URI);
       } else {
-        await AsyncStorage.removeItem(AppStorage.LNDHUB);
+        await AsyncStorage.removeItem(BlueApp.LNDHUB);
       }
-      alert(loc.settings.lightning_saved);
+      presentAlert({ message: loc.settings.lightning_saved });
     } catch (error) {
-      alert(loc.settings.lightning_error_lndhub_uri);
+      presentAlert({ message: loc.settings.lightning_error_lndhub_uri });
       console.log(error);
     }
     setIsLoading(false);
   }, [URI]);
 
   const importScan = () => {
-    navigation.navigate('ScanQRCodeRoot', {
-      screen: 'ScanQRCode',
-      params: {
-        launchedBy: route.name,
-        onBarScanned: setLndhubURI,
-        showFileImportButton: true,
-      },
+    scanQrHelper(route.name).then(data => {
+      if (data) {
+        setLndhubURI(data);
+      }
     });
   };
 
   return (
-    <SafeBlueArea>
+    <ScrollView automaticallyAdjustContentInsets contentInsetAdjustmentBehavior="automatic">
       <BlueCard>
         <BlueText>{loc.settings.lightning_settings_explain}</BlueText>
       </BlueCard>
 
-      <Button
+      <ButtonRNElements
         icon={{
           name: 'github',
           type: 'font-awesome',
@@ -151,10 +144,7 @@ const LightningSettings: React.FC & { navigationOptions: NavigationOptionsGetter
         <View style={[styles.uri, styleHook.uri]}>
           <TextInput
             value={URI}
-            placeholder={
-              loc.formatString(loc.settings.lndhub_uri, { example: 'https://10.20.30.40:3000' }) +
-              (isTorCapable ? ' (' + loc.settings.tor_supported + ')' : '')
-            }
+            placeholder={loc.formatString(loc.settings.lndhub_uri, { example: 'https://10.20.30.40:3000' })}
             onChangeText={setLndhubURI}
             numberOfLines={1}
             style={styles.uriText}
@@ -170,12 +160,10 @@ const LightningSettings: React.FC & { navigationOptions: NavigationOptionsGetter
         <BlueSpacing20 />
         <BlueButtonLink title={loc.wallets.import_scan_qr} testID="ImportScan" onPress={importScan} />
         <BlueSpacing20 />
-        {isLoading ? <BlueLoading /> : <BlueButton testID="Save" onPress={save} title={loc.settings.save} />}
+        {isLoading ? <BlueLoading /> : <Button testID="Save" onPress={save} title={loc.settings.save} />}
       </BlueCard>
-    </SafeBlueArea>
+    </ScrollView>
   );
 };
-
-LightningSettings.navigationOptions = navigationStyle({}, opts => ({ ...opts, title: loc.settings.lightning_settings }));
 
 export default LightningSettings;

@@ -1,9 +1,10 @@
 /* eslint react/prop-types: "off", react-native/no-inline-styles: "off" */
-import { StyleSheet, Pressable, View, Keyboard } from 'react-native';
-import { Text, Icon } from 'react-native-elements';
 import React, { useState } from 'react';
+import { Keyboard, Pressable, StyleSheet, View } from 'react-native';
+import { Icon, Text } from '@rneui/themed';
+
 import loc from '../loc';
-import { useTheme } from '@react-navigation/native';
+import { useTheme } from './themes';
 
 interface IHash {
   [key: string]: string;
@@ -23,13 +24,14 @@ export const ArrowPicker = (props: ArrowPickerProps) => {
 
   const stylesHook = {
     text: {
-      // @ts-ignore: Ignore theme typescript error
       color: colors.foregroundColor,
     },
   };
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={loc.send.dynamic_prev}
         onPress={() => {
           Keyboard.dismiss();
           let newIndex = keyIndex;
@@ -48,12 +50,16 @@ export const ArrowPicker = (props: ArrowPickerProps) => {
           styles.wrapperCustom,
         ]}
       >
-        <Icon size={24} name="chevron-left" type="ionicons" />
+        {/* 
+// @ts-ignore: Ignore */}
+        <Icon size={24} name="chevron-left" type="ionicons" tvParallaxProperties={undefined} />
       </Pressable>
       <View style={{ width: 200 }}>
         <Text style={[styles.text, stylesHook.text]}>{props.isItemUnknown ? loc.send.fee_custom : keys[keyIndex]}</Text>
       </View>
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={loc.send.dynamic_next}
         onPress={() => {
           Keyboard.dismiss();
           let newIndex = keyIndex;
@@ -72,7 +78,9 @@ export const ArrowPicker = (props: ArrowPickerProps) => {
           styles.wrapperCustom,
         ]}
       >
-        <Icon size={24} name="chevron-right" type="ionicons" />
+        {/* 
+// @ts-ignore: Ignore */}
+        <Icon size={24} name="chevron-right" type="ionicons" tvParallaxProperties={undefined} />
       </Pressable>
     </View>
   );

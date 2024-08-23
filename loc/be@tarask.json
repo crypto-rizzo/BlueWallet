@@ -1,0 +1,60 @@
+{
+  "_": {
+    "bad_password": "Няправільны пароль. Калі ласка, паспрабуйце зноў.",
+    "cancel": "Адмяніць",
+    "continue": "Працягнуць",
+    "clipboard": "Буфер абмену",
+    "discard_changes": "Адмяніць зьмены?",
+    "enter_password": "Увесьці пароль",
+    "never": "Ніколі",
+    "of": "{number} ад {total}",
+    "ok": "Акей",
+    "storage_is_encrypted": "Ваша сховішча зашыфравана. Для расшыфроўкі патрабуецца пароль.",
+    "yes": "Так",
+    "no": "Не",
+    "save": "Захаваць",
+    "seed": "Семя",
+    "success": "Посьпех",
+    "wallet_key": "Ключ ад кашалька"
+  },
+  "alert": {
+    "default": "Папярэджанне"
+  },
+  "azteco": {
+    "codeIs": "Ваш код ваўчара",
+    "errorBeforeRefeem": "Перад выплатай вы павінны спачатку дадаць кашалёк Bitcoin.",
+    "errorSomething": "Нешта пайшло не так. Сапраўдны ці гэты ваўчар па-ранейшаму?",
+    "redeem": "Перавесьці на кашалёк",
+    "redeemButton": "Перавесьці",
+    "success": "Посьпех"
+  },
+  "entropy": {
+    "save": "Захаваць",
+    "title": "Энтрапія",
+    "undo": "Адмяніць"
+  },
+  "errors": {
+    "broadcast": "Збой трансляцыі.",
+    "error": "Памылка",
+    "network": "Памылка Сеткі"
+  },
+  "lnd": {
+    "expired": "Скончыўся"
+  },
+  "plausibledeniability": {
+    "success": "Посьпех"
+  },
+  "send": {
+    "broadcastError": "Памылка",
+    "broadcastSuccess": "Посьпех",
+    "create_to": "Да"
+  },
+  "settings": {
+    "electrum_clear_alert_cancel": "Адмяніць",
+    "save": "Захаваць"
+  },
+  "wallets": {
+    "add_entropy": "Энтрапія",
+    "details_save": "Захаваць"
+  }
+}

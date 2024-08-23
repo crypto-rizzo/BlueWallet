@@ -1,7 +1,9 @@
-import { LegacyWallet } from './legacy-wallet';
-import * as bip39 from 'bip39';
 import { BIP32Interface } from 'bip32';
-import BlueElectrum from '../../blue_modules/BlueElectrum';
+import * as bip39 from 'bip39';
+
+import * as bip39custom from '../../blue_modules/bip39';
+import * as BlueElectrum from '../../blue_modules/BlueElectrum';
+import { LegacyWallet } from './legacy-wallet';
 import { Transaction } from './types';
 
 type AbstractHDWalletStatics = {
@@ -12,24 +14,28 @@ type AbstractHDWalletStatics = {
  * @deprecated
  */
 export class AbstractHDWallet extends LegacyWallet {
-  static type = 'abstract';
-  static typeReadable = 'abstract';
+  static readonly type = 'abstract';
+  static readonly typeReadable = 'abstract';
+  // @ts-ignore: override
+  public readonly type = AbstractHDWallet.type;
+  // @ts-ignore: override
+  public readonly typeReadable = AbstractHDWallet.typeReadable;
 
-  next_free_address_index: number; // eslint-disable-line camelcase
-  next_free_change_address_index: number; // eslint-disable-line camelcase
-  internal_addresses_cache: Record<number, string>; // eslint-disable-line camelcase
-  external_addresses_cache: Record<number, string>; // eslint-disable-line camelcase
+  next_free_address_index: number;
+  next_free_change_address_index: number;
+  internal_addresses_cache: Record<number, string>;
+  external_addresses_cache: Record<number, string>;
   _xpub: string;
   usedAddresses: string[];
-  _address_to_wif_cache: Record<string, string>; // eslint-disable-line camelcase
-  gap_limit: number; // eslint-disable-line camelcase
+  _address_to_wif_cache: Record<string, string>;
+  gap_limit: number;
   passphrase?: string;
   _node0?: BIP32Interface;
   _node1?: BIP32Interface;
 
   constructor() {
     super();
-    const Constructor = (this.constructor as unknown) as AbstractHDWalletStatics;
+    const Constructor = this.constructor as unknown as AbstractHDWalletStatics;
     this.next_free_address_index = 0;
     this.next_free_change_address_index = 0;
     this.internal_addresses_cache = {}; // index => address
@@ -77,6 +83,24 @@ export class AbstractHDWallet extends LegacyWallet {
   }
 
   setSecret(newSecret: string): this {
+    // first, checking if it's a SeedQR:
+    try {
+      // compact seedQR should be between 32 - 64 chars long in hex format
+      if (newSecret.length === 64 || newSecret.length === 32) {
+        // not supported as mobile scanners dont recognize such QRs at all.
+        // nop
+      } else if (newSecret.length === 96 || newSecret.length === 48) {
+        // standard seedQR
+        const wordlist = bip39.wordlists[bip39.getDefaultWordlist()];
+        const words = newSecret.match(/[\d]{4}/g);
+
+        if (words) {
+          newSecret = words.map(num => wordlist[parseInt(num, 10)]).join(' ');
+        }
+      }
+    } catch (e) {}
+    // end SeedQR
+
     this.secret = newSecret.trim().toLowerCase();
     this.secret = this.secret.replace(/[^a-zA-Z0-9]/g, ' ').replace(/\s+/g, ' ');
 
@@ -112,7 +136,7 @@ export class AbstractHDWallet extends LegacyWallet {
    * @return {Boolean} is mnemonic in `this.secret` valid
    */
   validateMnemonic(): boolean {
-    return bip39.validateMnemonic(this.secret);
+    return bip39custom.validateMnemonic(this.secret);
   }
 
   /**
@@ -133,7 +157,7 @@ export class AbstractHDWallet extends LegacyWallet {
       let txs = [];
       try {
         txs = await BlueElectrum.getTransactionsByAddress(address);
-      } catch (Err) {
+      } catch (Err: any) {
         console.warn('BlueElectrum.getTransactionsByAddress()', Err.message);
       }
       if (txs.length === 0) {
@@ -171,7 +195,7 @@ export class AbstractHDWallet extends LegacyWallet {
       let txs = [];
       try {
         txs = await BlueElectrum.getTransactionsByAddress(address);
-      } catch (Err) {
+      } catch (Err: any) {
         console.warn('BlueElectrum.getTransactionsByAddress()', Err.message);
       }
       if (txs.length === 0) {
@@ -201,11 +225,11 @@ export class AbstractHDWallet extends LegacyWallet {
     return this._address;
   }
 
-  _getExternalWIFByIndex(index: number): string {
+  _getExternalWIFByIndex(index: number): string | false {
     throw new Error('Not implemented');
   }
 
-  _getInternalWIFByIndex(index: number): string {
+  _getInternalWIFByIndex(index: number): string | false {
     throw new Error('Not implemented');
   }
 
@@ -245,16 +269,16 @@ export class AbstractHDWallet extends LegacyWallet {
 
     // fast approach, first lets iterate over all addressess we have in cache
     for (const indexStr of Object.keys(this.internal_addresses_cache)) {
-      const index = parseInt(indexStr);
+      const index = parseInt(indexStr, 10);
       if (this._getInternalAddressByIndex(index) === address) {
-        return (this._address_to_wif_cache[address] = this._getInternalWIFByIndex(index));
+        return (this._address_to_wif_cache[address] = <string>this._getInternalWIFByIndex(index));
       }
     }
 
     for (const indexStr of Object.keys(this.external_addresses_cache)) {
-      const index = parseInt(indexStr);
+      const index = parseInt(indexStr, 10);
       if (this._getExternalAddressByIndex(index) === address) {
-        return (this._address_to_wif_cache[address] = this._getExternalWIFByIndex(index));
+        return (this._address_to_wif_cache[address] = <string>this._getExternalWIFByIndex(index));
       }
     }
 
@@ -262,14 +286,14 @@ export class AbstractHDWallet extends LegacyWallet {
     for (let c = 0; c <= this.next_free_change_address_index + this.gap_limit; c++) {
       const possibleAddress = this._getInternalAddressByIndex(c);
       if (possibleAddress === address) {
-        return (this._address_to_wif_cache[address] = this._getInternalWIFByIndex(c));
+        return (this._address_to_wif_cache[address] = <string>this._getInternalWIFByIndex(c));
       }
     }
 
     for (let c = 0; c <= this.next_free_address_index + this.gap_limit; c++) {
       const possibleAddress = this._getExternalAddressByIndex(c);
       if (possibleAddress === address) {
-        return (this._address_to_wif_cache[address] = this._getExternalWIFByIndex(c));
+        return (this._address_to_wif_cache[address] = <string>this._getExternalWIFByIndex(c));
       }
     }
 

@@ -1,30 +1,30 @@
-import React, { useState } from 'react';
-import { Image, View, TouchableOpacity, StatusBar, Platform, StyleSheet, TextInput, Alert } from 'react-native';
-import { RNCamera } from 'react-native-camera';
-import { Icon } from 'react-native-elements';
+import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
+import LocalQRCode from '@remobile/react-native-qrcode-local-image';
+import * as bitcoin from 'bitcoinjs-lib';
+import createHash from 'create-hash';
+import React, { useEffect, useState } from 'react';
+import { Alert, Image, Platform, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { CameraScreen } from 'react-native-camera-kit';
+import { Icon } from '@rneui/themed';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { decodeUR, extractSingleWorkload, BlueURDecoder } from '../../blue_modules/ur';
-import { useNavigation, useRoute, useIsFocused, useTheme } from '@react-navigation/native';
-import loc from '../../loc';
-import { BlueLoading, BlueText, BlueButton, BlueSpacing40 } from '../../BlueComponents';
-import { BlueCurrentTheme } from '../../components/themes';
-import { openPrivacyDesktopSettings } from '../../class/camera';
-import alert from '../../components/Alert';
 
-const LocalQRCode = require('@remobile/react-native-qrcode-local-image');
-const createHash = require('create-hash');
-const fs = require('../../blue_modules/fs');
-const Base43 = require('../../blue_modules/base43');
-const bitcoin = require('bitcoinjs-lib');
+import Base43 from '../../blue_modules/base43';
+import * as fs from '../../blue_modules/fs';
+import { BlueURDecoder, decodeUR, extractSingleWorkload } from '../../blue_modules/ur';
+import { BlueLoading, BlueSpacing40, BlueText } from '../../BlueComponents';
+import { openPrivacyDesktopSettings } from '../../class/camera';
+import presentAlert from '../../components/Alert';
+import Button from '../../components/Button';
+import { useTheme } from '../../components/themes';
+import { isCameraAuthorizationStatusGranted } from '../../helpers/scan-qr';
+import loc from '../../loc';
+
 let decoder = false;
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#000000',
-  },
-  rnCamera: {
-    flex: 1,
   },
   closeTouch: {
     width: 40,
@@ -66,9 +66,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backdoorButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    width: 60,
+    height: 60,
+    backgroundColor: 'rgba(0,0,0,0.01)',
     position: 'absolute',
   },
   backdoorInputWrapper: { position: 'absolute', left: '5%', top: '0%', width: '90%', height: '70%', backgroundColor: 'white' },
@@ -77,12 +77,8 @@ const styles = StyleSheet.create({
     height: '50%',
     marginTop: 5,
     marginHorizontal: 20,
-    borderColor: BlueCurrentTheme.colors.formBorder,
-    borderBottomColor: BlueCurrentTheme.colors.formBorder,
     borderWidth: 1,
     borderRadius: 4,
-    backgroundColor: BlueCurrentTheme.colors.inputBackgroundColor,
-    color: BlueCurrentTheme.colors.foregroundColor,
     textAlignVertical: 'top',
   },
 });
@@ -91,24 +87,34 @@ const ScanQRCode = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();
   const route = useRoute();
-  const showFileImportButton = route.params.showFileImportButton || false;
-  const { launchedBy, onBarScanned, onDismiss, onBarScannerDismissWithoutData = () => {} } = route.params;
+  const { launchedBy, onBarScanned, onDismiss, showFileImportButton } = route.params;
   const scannedCache = {};
   const { colors } = useTheme();
   const isFocused = useIsFocused();
-  const [cameraStatus, setCameraStatus] = useState(RNCamera.Constants.CameraStatus.PENDING_AUTHORIZATION);
   const [backdoorPressed, setBackdoorPressed] = useState(0);
   const [urTotal, setUrTotal] = useState(0);
   const [urHave, setUrHave] = useState(0);
   const [backdoorText, setBackdoorText] = useState('');
   const [backdoorVisible, setBackdoorVisible] = useState(false);
   const [animatedQRCodeData, setAnimatedQRCodeData] = useState({});
+  const [cameraStatusGranted, setCameraStatusGranted] = useState(false);
   const stylesHook = StyleSheet.create({
     openSettingsContainer: {
       backgroundColor: colors.brandingColor,
     },
     progressWrapper: { backgroundColor: colors.brandingColor, borderColor: colors.foregroundColor, borderWidth: 4 },
+    backdoorInput: {
+      borderColor: colors.formBorder,
+      borderBottomColor: colors.formBorder,
+      backgroundColor: colors.inputBackgroundColor,
+      color: colors.foregroundColor,
+    },
   });
+
+  useEffect(() => {
+    isCameraAuthorizationStatusGranted().then(setCameraStatusGranted);
+  }, []);
+
   const HashIt = function (s) {
     return createHash('sha256').update(s).digest().toString('hex');
   };
@@ -121,9 +127,13 @@ const ScanQRCode = () => {
         const data = decoder.toString();
         decoder = false; // nullify for future use (?)
         if (launchedBy) {
-          navigation.navigate(launchedBy);
+          let merge = true;
+          if (typeof onBarScanned !== 'function') {
+            merge = false;
+          }
+          navigation.navigate({ name: launchedBy, params: { scannedData: data }, merge });
         }
-        onBarScanned({ data });
+        onBarScanned && onBarScanned({ data });
       } else {
         setUrTotal(100);
         setUrHave(Math.floor(decoder.estimatedPercentComplete() * 100));
@@ -131,16 +141,20 @@ const ScanQRCode = () => {
     } catch (error) {
       console.warn(error);
       setIsLoading(true);
-      Alert.alert(loc.send.scan_error, loc._.invalid_animated_qr_code_fragment, [
-        {
-          text: loc._.ok,
-          onPress: () => {
-            setIsLoading(false);
+      Alert.alert(
+        loc.send.scan_error,
+        loc._.invalid_animated_qr_code_fragment,
+        [
+          {
+            text: loc._.ok,
+            onPress: () => {
+              setIsLoading(false);
+            },
+            style: 'default',
           },
-          style: 'default',
-        },
+        ],
         { cancelabe: false },
-      ]);
+      );
     }
   };
 
@@ -166,25 +180,33 @@ const ScanQRCode = () => {
           data = Buffer.from(payload, 'hex').toString();
         }
         if (launchedBy) {
-          navigation.navigate(launchedBy);
+          let merge = true;
+          if (typeof onBarScanned !== 'function') {
+            merge = false;
+          }
+          navigation.navigate({ name: launchedBy, params: { scannedData: data }, merge });
         }
-        onBarScanned({ data });
+        onBarScanned && onBarScanned({ data });
       } else {
         setAnimatedQRCodeData(animatedQRCodeData);
       }
     } catch (error) {
       console.warn(error);
       setIsLoading(true);
-      Alert.alert(loc.send.scan_error, loc._.invalid_animated_qr_code_fragment, [
-        {
-          text: loc._.ok,
-          onPress: () => {
-            setIsLoading(false);
+      Alert.alert(
+        loc.send.scan_error,
+        loc._.invalid_animated_qr_code_fragment,
+        [
+          {
+            text: loc._.ok,
+            onPress: () => {
+              setIsLoading(false);
+            },
+            style: 'default',
           },
-          style: 'default',
-        },
+        ],
         { cancelabe: false },
-      ]);
+      );
     }
   };
 
@@ -204,6 +226,10 @@ const ScanQRCode = () => {
       return _onReadUniformResourceV2(ret.data);
     }
 
+    if (ret.data.toUpperCase().startsWith('UR:CRYPTO-OUTPUT')) {
+      return _onReadUniformResourceV2(ret.data);
+    }
+
     if (ret.data.toUpperCase().startsWith('UR:BYTES')) {
       const splitted = ret.data.split('/');
       if (splitted.length === 3 && splitted[1].includes('-')) {
@@ -219,11 +245,15 @@ const ScanQRCode = () => {
     try {
       const hex = Base43.decode(ret.data);
       bitcoin.Psbt.fromHex(hex); // if it doesnt throw - all good
-
+      const data = Buffer.from(hex, 'hex').toString('base64');
       if (launchedBy) {
-        navigation.navigate(launchedBy);
+        let merge = true;
+        if (typeof onBarScanned !== 'function') {
+          merge = false;
+        }
+        navigation.navigate({ name: launchedBy, params: { scannedData: data }, merge });
       }
-      onBarScanned({ data: Buffer.from(hex, 'hex').toString('base64') });
+      onBarScanned && onBarScanned({ data });
       return;
     } catch (_) {}
 
@@ -231,9 +261,13 @@ const ScanQRCode = () => {
       setIsLoading(true);
       try {
         if (launchedBy) {
-          navigation.navigate(launchedBy);
+          let merge = true;
+          if (typeof onBarScanned !== 'function') {
+            merge = false;
+          }
+          navigation.navigate({ name: launchedBy, params: { scannedData: ret.data }, merge });
         }
-        onBarScanned(ret.data);
+        onBarScanned && onBarScanned(ret.data);
       } catch (e) {
         console.log(e);
       }
@@ -271,7 +305,7 @@ const ScanQRCode = () => {
                 if (!error) {
                   onBarCodeRead({ data: result });
                 } else {
-                  alert(loc.send.qr_error_no_qrcode);
+                  presentAlert({ message: loc.send.qr_error_no_qrcode });
                   setIsLoading(false);
                 }
               });
@@ -285,57 +319,49 @@ const ScanQRCode = () => {
   };
 
   const dismiss = () => {
-    onBarScannerDismissWithoutData();
     if (launchedBy) {
-      navigation.navigate(launchedBy);
+      let merge = true;
+      if (typeof onBarScanned !== 'function') {
+        merge = false;
+      }
+      navigation.navigate({ name: launchedBy, params: {}, merge });
     } else {
       navigation.goBack();
     }
     if (onDismiss) onDismiss();
   };
 
-  const handleCameraStatusChange = event => {
-    setCameraStatus(event.cameraStatus);
-  };
-
-  return isLoading ? (
-    <View style={styles.root}>
-      <BlueLoading />
-    </View>
+  const render = isLoading ? (
+    <BlueLoading />
   ) : (
-    <View style={styles.root}>
-      <StatusBar hidden />
-      {isFocused && cameraStatus !== RNCamera.Constants.CameraStatus.NOT_AUTHORIZED && (
-        <RNCamera
-          autoFocus
-          captureAudio={false}
-          androidCameraPermissionOptions={{
-            title: loc.send.permission_camera_title,
-            message: loc.send.permission_camera_message,
-            buttonPositive: loc._.ok,
-            buttonNegative: loc._.cancel,
-          }}
-          style={styles.rnCamera}
-          onBarCodeRead={onBarCodeRead}
-          barCodeTypes={[RNCamera.Constants.BarCodeType.qr]}
-          onStatusChange={handleCameraStatusChange}
-        />
-      )}
-      {cameraStatus === RNCamera.Constants.CameraStatus.NOT_AUTHORIZED && (
+    <>
+      {!cameraStatusGranted ? (
         <View style={[styles.openSettingsContainer, stylesHook.openSettingsContainer]}>
           <BlueText>{loc.send.permission_camera_message}</BlueText>
           <BlueSpacing40 />
-          <BlueButton title={loc.send.open_settings} onPress={openPrivacyDesktopSettings} />
+          <Button title={loc.send.open_settings} onPress={openPrivacyDesktopSettings} />
         </View>
-      )}
-      <TouchableOpacity style={styles.closeTouch} onPress={dismiss}>
+      ) : isFocused ? (
+        <CameraScreen scanBarcode onReadCode={event => onBarCodeRead({ data: event?.nativeEvent?.codeStringValue })} showFrame={false} />
+      ) : null}
+      <TouchableOpacity accessibilityRole="button" accessibilityLabel={loc._.close} style={styles.closeTouch} onPress={dismiss}>
         <Image style={styles.closeImage} source={require('../../img/close-white.png')} />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.imagePickerTouch} onPress={showImagePicker}>
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={loc._.pick_image}
+        style={styles.imagePickerTouch}
+        onPress={showImagePicker}
+      >
         <Icon name="image" type="font-awesome" color="#ffffff" />
       </TouchableOpacity>
       {showFileImportButton && (
-        <TouchableOpacity style={styles.filePickerTouch} onPress={showFilePicker}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={loc._.pick_file}
+          style={styles.filePickerTouch}
+          onPress={showFilePicker}
+        >
           <Icon name="file-import" type="font-awesome-5" color="#ffffff" />
         </TouchableOpacity>
       )}
@@ -354,7 +380,7 @@ const ScanQRCode = () => {
             testID="scanQrBackdoorInput"
             multiline
             underlineColorAndroid="transparent"
-            style={styles.backdoorInput}
+            style={[styles.backdoorInput, stylesHook.backdoorInput]}
             autoCorrect={false}
             autoCapitalize="none"
             spellCheck={false}
@@ -363,7 +389,7 @@ const ScanQRCode = () => {
             value={backdoorText}
             onChangeText={setBackdoorText}
           />
-          <BlueButton
+          <Button
             title="OK"
             testID="scanQrBackdoorOkButton"
             onPress={() => {
@@ -376,6 +402,8 @@ const ScanQRCode = () => {
         </View>
       )}
       <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={loc._.qr_custom_input_button}
         testID="ScanQrBackdoorButton"
         style={styles.backdoorButton}
         onPress={async () => {
@@ -388,8 +416,10 @@ const ScanQRCode = () => {
           setBackdoorVisible(true);
         }}
       />
-    </View>
+    </>
   );
+
+  return <View style={styles.root}>{render}</View>;
 };
 
 export default ScanQRCode;

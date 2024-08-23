@@ -1,24 +1,28 @@
-import React, { useContext, useEffect, useState, useRef, useMemo } from 'react';
-import { ActivityIndicator, Alert, FlatList, LayoutAnimation, StyleSheet, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useRoute } from '@react-navigation/native';
+import { ActivityIndicator, FlatList, LayoutAnimation, StyleSheet, View } from 'react-native';
 import IdleTimerManager from 'react-native-idle-timer';
-import { useNavigation, useRoute, useTheme } from '@react-navigation/native';
-import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
-import { BlueButton, BlueButtonLink, BlueFormLabel, BlueSpacing10, BlueSpacing20, SafeBlueArea } from '../../BlueComponents';
-import navigationStyle from '../../components/navigationStyle';
-import WalletToImport from '../../components/WalletToImport';
-import loc from '../../loc';
+import triggerHapticFeedback, { HapticFeedbackTypes } from '../../blue_modules/hapticFeedback';
+import { BlueButtonLink, BlueFormLabel, BlueSpacing10, BlueSpacing20 } from '../../BlueComponents';
 import { HDSegwitBech32Wallet } from '../../class';
 import startImport from '../../class/wallet-import';
-import { BlueStorageContext } from '../../blue_modules/storage-context';
-import prompt from '../../blue_modules/prompt';
+import presentAlert from '../../components/Alert';
+import Button from '../../components/Button';
+import SafeArea from '../../components/SafeArea';
+import { useTheme } from '../../components/themes';
+import WalletToImport from '../../components/WalletToImport';
+import prompt from '../../helpers/prompt';
+import loc from '../../loc';
+import { useExtendedNavigation } from '../../hooks/useExtendedNavigation';
+import { useStorage } from '../../hooks/context/useStorage';
 
 const ImportWalletDiscovery = () => {
-  const navigation = useNavigation();
+  const navigation = useExtendedNavigation();
   const { colors } = useTheme();
   const route = useRoute();
   const { importText, askPassphrase, searchAccounts } = route.params;
   const task = useRef();
-  const { addAndSaveWallet } = useContext(BlueStorageContext);
+  const { addAndSaveWallet } = useStorage();
   const [loading, setLoading] = useState(true);
   const [wallets, setWallets] = useState([]);
   const [password, setPassword] = useState();
@@ -44,7 +48,7 @@ const ImportWalletDiscovery = () => {
     if (importing.current) return;
     importing.current = true;
     addAndSaveWallet(wallet);
-    navigation.dangerouslyGetParent().pop();
+    navigation.getParent().pop();
   };
 
   useEffect(() => {
@@ -57,7 +61,7 @@ const ImportWalletDiscovery = () => {
       try {
         subtitle = wallet.getDerivationPath?.();
       } catch (e) {}
-      setWallets(wallets => [...wallets, { wallet, subtitle, id }]);
+      setWallets(w => [...w, { wallet, subtitle, id }]);
     };
 
     const onPassword = async (title, subtitle) => {
@@ -78,16 +82,16 @@ const ImportWalletDiscovery = () => {
     task.current = startImport(importText, askPassphrase, searchAccounts, onProgress, onWallet, onPassword);
 
     task.current.promise
-      .then(({ cancelled, wallets }) => {
+      .then(({ cancelled, wallets: w }) => {
         if (cancelled) return;
-        if (wallets.length === 1) saveWallet(wallets[0]); // instantly save wallet if only one has been discovered
-        if (wallets.length === 0) {
-          ReactNativeHapticFeedback.trigger('impactLight', { ignoreAndroidSystemSettings: false });
+        if (w.length === 1) saveWallet(w[0]); // instantly save wallet if only one has been discovered
+        if (w.length === 0) {
+          triggerHapticFeedback(HapticFeedbackTypes.ImpactLight);
         }
       })
       .catch(e => {
         console.warn('import error', e);
-        Alert.alert('import error', e.message);
+        presentAlert({ title: 'Import error', message: e.message });
       })
       .finally(() => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -112,7 +116,7 @@ const ImportWalletDiscovery = () => {
       active={selected === index}
       onPress={() => {
         setSelected(index);
-        ReactNativeHapticFeedback.trigger('selection', { ignoreAndroidSystemSettings: false });
+        triggerHapticFeedback(HapticFeedbackTypes.Selection);
       }}
     />
   );
@@ -120,7 +124,7 @@ const ImportWalletDiscovery = () => {
   const keyExtractor = w => w.id;
 
   return (
-    <SafeBlueArea style={[styles.root, stylesHook.root]}>
+    <SafeArea style={[styles.root, stylesHook.root]}>
       <BlueSpacing20 />
       <BlueFormLabel>{loc.wallets.import_discovery_subtitle}</BlueFormLabel>
       <BlueSpacing20 />
@@ -152,20 +156,21 @@ const ImportWalletDiscovery = () => {
         )}
         <BlueSpacing10 />
         <View style={styles.buttonContainer}>
-          <BlueButton
+          <Button
             disabled={wallets.length === 0}
             title={loc.wallets.import_do_import}
             onPress={() => saveWallet(wallets[selected].wallet)}
           />
         </View>
       </View>
-    </SafeBlueArea>
+    </SafeArea>
   );
 };
 
 const styles = StyleSheet.create({
   root: {
     paddingTop: 40,
+    flex: 1,
   },
   flatListContainer: {
     marginHorizontal: 16,
@@ -184,7 +189,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
-
-ImportWalletDiscovery.navigationOptions = navigationStyle({}, opts => ({ ...opts, title: loc.wallets.import_discovery_title }));
 
 export default ImportWalletDiscovery;

@@ -2,7 +2,7 @@
   "parser": "@typescript-eslint/parser",
   "plugins": [
     "@typescript-eslint",
-    "react-native" // for no-inline-styles rule
+    "react-native", // for no-inline-styles rule
   ],
   "extends": [
     "standard",
@@ -11,13 +11,15 @@
     "plugin:react-hooks/recommended",
     "plugin:react/recommended",
     "plugin:@typescript-eslint/recommended",
-    // "@react-native-community", // TODO: try to enable
+    "@react-native",
     "plugin:prettier/recommended" // removes all eslint rules that can mess up with prettier
   ],
   "rules": {
     "react/jsx-handler-names": "off", // activated by standard-react config
     "react/display-name": "off",
     "react-native/no-inline-styles": "error",
+    "react-native/no-unused-styles": "error",
+    "react-native/no-single-element-style-arrays": "error",
     "prettier/prettier": [
       "warn",
       {
@@ -47,7 +49,7 @@
     "@typescript-eslint/explicit-module-boundary-types": "off",
     "@typescript-eslint/no-var-requires": "off",
     "@typescript-eslint/no-this-alias": "off",
-    "@typescript-eslint/no-use-before-define": "off"
+    "@typescript-eslint/no-use-before-define": "off",
   },
   "overrides": [
     {
@@ -66,5 +68,10 @@
   "env": {
     "es6": true
   },
-  "globals": { "fetch": false }
+  "globals": { "fetch": false },
+  "settings": {
+    "react": { // this is for eslint-plugin-react
+      "version": "detect" // React version. "detect" automatically picks the version you have installed.
+    }
+  }
 }

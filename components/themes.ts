@@ -1,4 +1,4 @@
-import { DefaultTheme, DarkTheme, useTheme as useThemeBase } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, useTheme as useThemeBase } from '@react-navigation/native';
 import { Appearance } from 'react-native';
 
 export const BlueDefaultTheme = {
@@ -8,12 +8,14 @@ export const BlueDefaultTheme = {
   scanImage: require('../img/scan.png'),
   colors: {
     ...DefaultTheme.colors,
+    borderWidth: 0.5,
     brandingColor: '#ffffff',
     customHeader: '#ffffff',
     foregroundColor: '#0c2550',
     borderTopColor: 'rgba(0, 0, 0, 0.1)',
     buttonBackgroundColor: '#ccddf9',
     buttonTextColor: '#0c2550',
+    secondButtonTextColor: '#50555C',
     buttonAlternativeTextColor: '#2f5fb3',
     buttonDisabledBackgroundColor: '#eef0f4',
     buttonDisabledTextColor: '#9aa0aa',
@@ -22,6 +24,7 @@ export const BlueDefaultTheme = {
     alternativeTextColor: '#9aa0aa',
     alternativeTextColor2: '#0f5cc0',
     buttonBlueBackgroundColor: '#ccddf9',
+    buttonGrayBackgroundColor: '#EEEEEE',
     incomingBackgroundColor: '#d2f8d6',
     incomingForegroundColor: '#37c0a1',
     outgoingBackgroundColor: '#f8d2d2',
@@ -65,6 +68,7 @@ export const BlueDefaultTheme = {
     changeText: '#F38C47',
     receiveBackground: '#D1F9D6',
     receiveText: '#37C0A1',
+    navigationBarColor: '#FFFFFF',
   },
 };
 
@@ -120,6 +124,7 @@ export const BlueDarkTheme: Theme = {
     changeText: '#F38C47',
     receiveBackground: 'rgba(210,248,214,.2)',
     receiveText: '#37C0A1',
+    navigationBarColor: '#3A3A3C',
   },
 };
 

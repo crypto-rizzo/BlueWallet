@@ -1,22 +1,24 @@
-import React, { useCallback, useEffect } from 'react';
-import PropTypes from 'prop-types';
-import { TextInput, FlatList, Linking, TouchableOpacity, StyleSheet, Text, View, Platform, PermissionsAndroid, Alert } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
-import { Icon } from 'react-native-elements';
-import Share from 'react-native-share';
-import RNFS from 'react-native-fs';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import BigNumber from 'bignumber.js';
-import { BlueText } from '../../BlueComponents';
-import navigationStyle from '../../components/navigationStyle';
-import Privacy from '../../blue_modules/Privacy';
-import { BitcoinUnit } from '../../models/bitcoinUnits';
-import loc from '../../loc';
-import { DynamicQRCode } from '../../components/DynamicQRCode';
+import * as bitcoin from 'bitcoinjs-lib';
+import PropTypes from 'prop-types';
+import React, { useCallback, useEffect } from 'react';
+import { Alert, FlatList, Linking, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Icon } from '@rneui/themed';
+import RNFS from 'react-native-fs';
+import { PERMISSIONS, request, RESULTS } from 'react-native-permissions';
+import Share from 'react-native-share';
+
+import { satoshiToBTC } from '../../blue_modules/currency';
 import { isDesktop } from '../../blue_modules/environment';
-import { useNavigation, useRoute, useTheme } from '@react-navigation/native';
-import alert from '../../components/Alert';
-const bitcoin = require('bitcoinjs-lib');
-const currency = require('../../blue_modules/currency');
+import { BlueText } from '../../BlueComponents';
+import presentAlert from '../../components/Alert';
+import { DynamicQRCode } from '../../components/DynamicQRCode';
+import { useTheme } from '../../components/themes';
+import usePrivacy from '../../hooks/usePrivacy';
+import loc from '../../loc';
+import { BitcoinUnit } from '../../models/bitcoinUnits';
 
 const SendCreate = () => {
   const { fee, recipients, memo = '', satoshiPerByte, psbt, showAnimatedQr, tx } = useRoute().params;
@@ -24,6 +26,7 @@ const SendCreate = () => {
   const size = transaction.virtualSize();
   const { colors } = useTheme();
   const { setOptions } = useNavigation();
+  const { enableBlur, disableBlur } = usePrivacy();
 
   const styleHooks = StyleSheet.create({
     transactionDetailsTitle: {
@@ -44,13 +47,12 @@ const SendCreate = () => {
   });
 
   useEffect(() => {
-    Privacy.enableBlur();
-
     console.log('send/create - useEffect');
+    enableBlur();
     return () => {
-      Privacy.disableBlur();
+      disableBlur();
     };
-  }, []);
+  }, [disableBlur, enableBlur]);
 
   const exportTXN = useCallback(async () => {
     const fileName = `${Date.now()}.txn`;
@@ -68,23 +70,16 @@ const SendCreate = () => {
           RNFS.unlink(filePath);
         });
     } else if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE, {
-        title: loc.send.permission_storage_title,
-        message: loc.send.permission_storage_message,
-        buttonNeutral: loc.send.permission_storage_later,
-        buttonNegative: loc._.cancel,
-        buttonPositive: loc._.ok,
-      });
-
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+      const granted = await request(PERMISSIONS.ANDROID.WRITE_EXTERNAL_STORAGE);
+      if (granted === RESULTS.GRANTED) {
         console.log('Storage Permission: Granted');
         const filePath = RNFS.DownloadDirectoryPath + `/${fileName}`;
         try {
           await RNFS.writeFile(filePath, tx);
-          alert(loc.formatString(loc.send.txSaved, { filePath }));
+          presentAlert({ message: loc.formatString(loc.send.txSaved, { filePath }) });
         } catch (e) {
           console.log(e);
-          alert(e.message);
+          presentAlert({ message: e.message });
         }
       } else {
         console.log('Storage Permission: Denied');
@@ -104,6 +99,7 @@ const SendCreate = () => {
 
   useEffect(() => {
     setOptions({
+      // eslint-disable-next-line react/no-unstable-nested-components
       headerRight: () => (
         <TouchableOpacity accessibilityRole="button" onPress={exportTXN}>
           <Icon size={22} name="share-alternative" type="entypo" color={colors.foregroundColor} />
@@ -120,7 +116,7 @@ const SendCreate = () => {
           <Text style={[styles.transactionDetailsSubtitle, styleHooks.transactionDetailsSubtitle]}>{item.address}</Text>
           <Text style={[styles.transactionDetailsTitle, styleHooks.transactionDetailsTitle]}>{loc.send.create_amount}</Text>
           <Text style={[styles.transactionDetailsSubtitle, styleHooks.transactionDetailsSubtitle]}>
-            {currency.satoshiToBTC(item.value)} {BitcoinUnit.BTC}
+            {satoshiToBTC(item.value)} {BitcoinUnit.BTC}
           </Text>
           {recipients.length > 1 && (
             <BlueText style={styles.itemOf}>{loc.formatString(loc._.of, { number: index + 1, total: recipients.length })}</BlueText>
@@ -218,10 +214,6 @@ const styles = StyleSheet.create({
     height: 0.5,
     marginVertical: 16,
   },
-  card: {
-    alignItems: 'center',
-    flex: 1,
-  },
   cardText: {
     fontWeight: '500',
   },
@@ -246,11 +238,4 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     alignSelf: 'center',
   },
-});
-
-SendCreate.navigationOptions = navigationStyle({}, (options, { theme, navigation, route }) => {
-  return {
-    ...options,
-    title: loc.send.create_details,
-  };
 });

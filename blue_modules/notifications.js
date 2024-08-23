@@ -1,18 +1,20 @@
-import PushNotificationIOS from '@react-native-community/push-notification-ios';
-import { Alert, Platform } from 'react-native';
-import Frisbee from 'frisbee';
-import { getApplicationName, getVersion, getSystemName, getSystemVersion, hasGmsSync, hasHmsSync } from 'react-native-device-info';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import loc from '../loc';
+import PushNotificationIOS from '@react-native-community/push-notification-ios';
+import { findNodeHandle, Platform } from 'react-native';
+import { getApplicationName, getSystemName, getSystemVersion, getVersion, hasGmsSync, hasHmsSync } from 'react-native-device-info';
+import { requestNotifications } from 'react-native-permissions';
+import PushNotification from 'react-native-push-notification';
 
-const PushNotification = require('react-native-push-notification');
-const constants = require('./constants');
+import loc from '../loc';
+import ActionSheet from '../screen/ActionSheet';
+import { groundControlUri } from './constants';
+
 const PUSH_TOKEN = 'PUSH_TOKEN';
 const GROUNDCONTROL_BASE_URI = 'GROUNDCONTROL_BASE_URI';
 const NOTIFICATIONS_STORAGE = 'NOTIFICATIONS_STORAGE';
 const NOTIFICATIONS_NO_AND_DONT_ASK_FLAG = 'NOTIFICATIONS_NO_AND_DONT_ASK_FLAG';
 let alreadyConfigured = false;
-let baseURI = constants.groundControlUri;
+let baseURI = groundControlUri;
 
 function Notifications(props) {
   async function _setPushToken(token) {
@@ -30,6 +32,7 @@ function Notifications(props) {
   };
 
   Notifications.isNotificationsCapable = hasGmsSync() || hasHmsSync() || Platform.OS !== 'android';
+
   /**
    * Calls `configure`, which tries to obtain push token, save it, and registers all associated with
    * notifications callbacks
@@ -38,75 +41,80 @@ function Notifications(props) {
    */
   const configureNotifications = async function () {
     return new Promise(function (resolve) {
-      PushNotification.configure({
-        // (optional) Called when Token is generated (iOS and Android)
-        onRegister: async function (token) {
-          console.log('TOKEN:', token);
-          alreadyConfigured = true;
-          await _setPushToken(token);
-          resolve(true);
-        },
+      requestNotifications(['alert', 'sound', 'badge']).then(({ status, _ }) => {
+        if (status === 'granted') {
+          PushNotification.configure({
+            // (optional) Called when Token is generated (iOS and Android)
+            onRegister: async function (token) {
+              console.debug('TOKEN:', token);
+              alreadyConfigured = true;
+              await _setPushToken(token);
+              resolve(true);
+            },
 
-        // (required) Called when a remote is received or opened, or local notification is opened
-        onNotification: async function (notification) {
-          // since we do not know whether we:
-          // 1) received notification while app is in background (and storage is not decrypted so wallets are not loaded)
-          // 2) opening this notification right now but storage is still unencrypted
-          // 3) any of the above but the storage is decrypted, and app wallets are loaded
-          //
-          // ...we save notification in internal notifications queue thats gona be processed later (on unsuspend with decrypted storage)
+            // (required) Called when a remote is received or opened, or local notification is opened
+            onNotification: async function (notification) {
+              // since we do not know whether we:
+              // 1) received notification while app is in background (and storage is not decrypted so wallets are not loaded)
+              // 2) opening this notification right now but storage is still unencrypted
+              // 3) any of the above but the storage is decrypted, and app wallets are loaded
+              //
+              // ...we save notification in internal notifications queue thats gona be processed later (on unsuspend with decrypted storage)
 
-          const payload = Object.assign({}, notification, notification.data);
-          if (notification.data && notification.data.data) Object.assign(payload, notification.data.data);
-          delete payload.data;
-          // ^^^ weird, but sometimes payload data is not in `data` but in root level
-          console.log('got push notification', payload);
+              const payload = Object.assign({}, notification, notification.data);
+              if (notification.data && notification.data.data) Object.assign(payload, notification.data.data);
+              delete payload.data;
+              // ^^^ weird, but sometimes payload data is not in `data` but in root level
+              console.debug('got push notification', payload);
 
-          await Notifications.addNotification(payload);
+              await Notifications.addNotification(payload);
 
-          // (required) Called when a remote is received or opened, or local notification is opened
-          notification.finish(PushNotificationIOS.FetchResult.NoData);
+              // (required) Called when a remote is received or opened, or local notification is opened
+              notification.finish(PushNotificationIOS.FetchResult.NoData);
 
-          // if user is staring at the app when he receives the notification we process it instantly
-          // so app refetches related wallet
-          if (payload.foreground) props.onProcessNotifications();
-        },
+              // if user is staring at the app when he receives the notification we process it instantly
+              // so app refetches related wallet
+              if (payload.foreground) props.onProcessNotifications();
+            },
 
-        // (optional) Called when Registered Action is pressed and invokeApp is false, if true onNotification will be called (Android)
-        onAction: function (notification) {
-          console.log('ACTION:', notification.action);
-          console.log('NOTIFICATION:', notification);
+            // (optional) Called when Registered Action is pressed and invokeApp is false, if true onNotification will be called (Android)
+            onAction: function (notification) {
+              console.debug('ACTION:', notification.action);
+              console.debug('NOTIFICATION:', notification);
 
-          // process the action
-        },
+              // process the action
+            },
 
-        // (optional) Called when the user fails to register for remote notifications. Typically occurs when APNS is having issues, or the device is a simulator. (iOS)
-        onRegistrationError: function (err) {
-          console.error(err.message, err);
-          resolve(false);
-        },
+            // (optional) Called when the user fails to register for remote notifications. Typically occurs when APNS is having issues, or the device is a simulator. (iOS)
+            onRegistrationError: function (err) {
+              console.error(err.message, err);
+              resolve(false);
+            },
 
-        // IOS ONLY (optional): default: all - Permissions to register.
-        permissions: {
-          alert: true,
-          badge: true,
-          sound: true,
-        },
+            // IOS ONLY (optional): default: all - Permissions to register.
+            permissions: {
+              alert: true,
+              badge: true,
+              sound: true,
+            },
 
-        // Should the initial notification be popped automatically
-        // default: true
-        popInitialNotification: true,
+            // Should the initial notification be popped automatically
+            // default: true
+            popInitialNotification: true,
 
-        /**
-         * (optional) default: true
-         * - Specified if permissions (ios) and token (android and ios) will requested or not,
-         * - if not, you must call PushNotificationsHandler.requestPermissions() later
-         * - if you are not using remote notification or do not have Firebase installed, use this:
-         *     requestPermissions: Platform.OS === 'ios'
-         */
-        requestPermissions: true,
+            /**
+             * (optional) default: true
+             * - Specified if permissions (ios) and token (android and ios) will requested or not,
+             * - if not, you must call PushNotificationsHandler.requestPermissions() later
+             * - if you are not using remote notification or do not have Firebase installed, use this:
+             *     requestPermissions: Platform.OS === 'ios'
+             */
+            requestPermissions: true,
+          });
+        }
       });
     });
+    // …
   };
 
   Notifications.cleanUserOptOutFlag = async function () {
@@ -122,7 +130,7 @@ function Notifications(props) {
    *
    * @returns {Promise<boolean>} TRUE if permissions were obtained, FALSE otherwise
    */
-  Notifications.tryToObtainPermissions = async function () {
+  Notifications.tryToObtainPermissions = async function (anchor) {
     if (!Notifications.isNotificationsCapable) return false;
     if (await Notifications.getPushToken()) {
       // we already have a token, no sense asking again, just configure pushes to register callbacks and we are done
@@ -136,44 +144,37 @@ function Notifications(props) {
     }
 
     return new Promise(function (resolve) {
-      Alert.alert(
-        loc.settings.notifications,
-        loc.notifications.would_you_like_to_receive_notifications,
-        [
-          {
-            text: loc.notifications.no_and_dont_ask,
-            onPress: () => {
-              AsyncStorage.setItem(NOTIFICATIONS_NO_AND_DONT_ASK_FLAG, '1');
+      const options = [loc.notifications.no_and_dont_ask, loc.notifications.ask_me_later, loc._.ok];
+
+      ActionSheet.showActionSheetWithOptions(
+        {
+          title: loc.settings.notifications,
+          message: loc.notifications.would_you_like_to_receive_notifications,
+          options,
+          cancelButtonIndex: 0, // Assuming 'no and don't ask' is still treated as the cancel action
+          anchor: anchor ? findNodeHandle(anchor.current) : undefined,
+        },
+        buttonIndex => {
+          switch (buttonIndex) {
+            case 0:
+              AsyncStorage.setItem(NOTIFICATIONS_NO_AND_DONT_ASK_FLAG, '1').then(() => resolve(false));
+              break;
+            case 1:
               resolve(false);
-            },
-            style: 'cancel',
-          },
-          {
-            text: loc.notifications.ask_me_later,
-            onPress: () => {
-              resolve(false);
-            },
-            style: 'cancel',
-          },
-          {
-            text: loc._.ok,
-            onPress: async () => {
-              resolve(await configureNotifications());
-            },
-            style: 'default',
-          },
-        ],
-        { cancelable: false },
+              break;
+            case 2:
+              configureNotifications().then(resolve);
+              break;
+          }
+        },
       );
     });
   };
 
   function _getHeaders() {
     return {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json',
-      },
+      'Access-Control-Allow-Origin': '*',
+      'Content-Type': 'application/json',
     };
   }
 
@@ -196,20 +197,19 @@ function Notifications(props) {
     const pushToken = await Notifications.getPushToken();
     if (!pushToken || !pushToken.token || !pushToken.os) return;
 
-    const api = new Frisbee({ baseURI });
-
-    return await api.post(
-      '/majorTomToGroundControl',
-      Object.assign({}, _getHeaders(), {
-        body: {
-          addresses,
-          hashes,
-          txids,
-          token: pushToken.token,
-          os: pushToken.os,
-        },
+    const response = await fetch(`${baseURI}/majorTomToGroundControl`, {
+      method: 'POST',
+      headers: _getHeaders(),
+      body: JSON.stringify({
+        addresses,
+        hashes,
+        txids,
+        token: pushToken.token,
+        os: pushToken.os,
       }),
-    );
+    });
+
+    return response.json();
   };
 
   /**
@@ -226,34 +226,35 @@ function Notifications(props) {
     const pushToken = await Notifications.getPushToken();
     if (!pushToken || !pushToken.token || !pushToken.os) return;
 
-    const api = new Frisbee({ baseURI });
-
-    return await api.post(
-      '/unsubscribe',
-      Object.assign({}, _getHeaders(), {
-        body: {
-          addresses,
-          hashes,
-          txids,
-          token: pushToken.token,
-          os: pushToken.os,
-        },
+    const response = await fetch(`${baseURI}/unsubscribe`, {
+      method: 'POST',
+      headers: _getHeaders(),
+      body: JSON.stringify({
+        addresses,
+        hashes,
+        txids,
+        token: pushToken.token,
+        os: pushToken.os,
       }),
-    );
+    });
+
+    console.debug('Abandoning notifications Permissions...');
+    PushNotification.abandonPermissions();
+    console.debug('Abandoned notifications Permissions...');
+    return response.json();
   };
 
   Notifications.isNotificationsEnabled = async function () {
     const levels = await getLevels();
-
     return !!(await Notifications.getPushToken()) && !!levels.level_all;
   };
 
   Notifications.getDefaultUri = function () {
-    return constants.groundControlUri;
+    return groundControlUri;
   };
 
   Notifications.saveUri = async function (uri) {
-    baseURI = uri || constants.groundControlUri; // settign the url to use currently. if not set - use default
+    baseURI = uri || groundControlUri; // setting the url to use currently. if not set - use default
     return AsyncStorage.setItem(GROUNDCONTROL_BASE_URI, uri);
   };
 
@@ -261,21 +262,22 @@ function Notifications(props) {
     return AsyncStorage.getItem(GROUNDCONTROL_BASE_URI);
   };
 
+  /**
+   * Validates whether the provided GroundControl URI is valid by pinging it.
+   *
+   * @param uri {string}
+   * @returns {Promise<boolean>} TRUE if valid, FALSE otherwise
+   */
   Notifications.isGroundControlUriValid = async uri => {
-    const apiCall = new Frisbee({
-      baseURI: uri,
-    });
     let response;
     try {
-      response = await Promise.race([apiCall.get('/ping', _getHeaders()), _sleep(2000)]);
+      response = await Promise.race([fetch(`${uri}/ping`, { headers: _getHeaders() }), _sleep(2000)]);
     } catch (_) {}
 
-    if (!response || !response.body) return false; // either sleep expired or apiCall threw an exception
+    if (!response) return false;
 
-    const json = response.body;
-    if (json.description) return true;
-
-    return false;
+    const json = await response.json();
+    return !!json.description;
   };
 
   /**
@@ -304,19 +306,19 @@ function Notifications(props) {
     const pushToken = await Notifications.getPushToken();
     if (!pushToken || !pushToken.token || !pushToken.os) return;
 
-    const api = new Frisbee({ baseURI });
-
     try {
-      await api.post(
-        '/setTokenConfiguration',
-        Object.assign({}, _getHeaders(), {
-          body: {
-            level_all: !!levelAll,
-            token: pushToken.token,
-            os: pushToken.os,
-          },
+      await fetch(`${baseURI}/setTokenConfiguration`, {
+        method: 'POST',
+        headers: _getHeaders(),
+        body: JSON.stringify({
+          level_all: !!levelAll,
+          token: pushToken.token,
+          os: pushToken.os,
         }),
-      );
+      });
+      console.debug('Abandoning notifications Permissions...');
+      PushNotification.abandonPermissions();
+      console.debug('Abandoned notifications Permissions...');
     } catch (_) {}
   };
 
@@ -329,19 +331,24 @@ function Notifications(props) {
     const pushToken = await Notifications.getPushToken();
     if (!pushToken || !pushToken.token || !pushToken.os) return;
 
-    const api = new Frisbee({ baseURI });
-
     let response;
     try {
       response = await Promise.race([
-        api.post('/getTokenConfiguration', Object.assign({}, _getHeaders(), { body: { token: pushToken.token, os: pushToken.os } })),
+        fetch(`${baseURI}/getTokenConfiguration`, {
+          method: 'POST',
+          headers: _getHeaders(),
+          body: JSON.stringify({
+            token: pushToken.token,
+            os: pushToken.os,
+          }),
+        }),
         _sleep(3000),
       ]);
     } catch (_) {}
 
-    if (!response || !response.body) return {}; // either sleep expired or apiCall threw an exception
+    if (!response) return {};
 
-    return response.body;
+    return await response.json();
   };
 
   Notifications.getStoredNotifications = async function () {
@@ -371,23 +378,20 @@ function Notifications(props) {
     const pushToken = await Notifications.getPushToken();
     if (!pushToken || !pushToken.token || !pushToken.os) return;
 
-    const api = new Frisbee({ baseURI });
-
     try {
       const lang = (await AsyncStorage.getItem('lang')) || 'en';
       const appVersion = getSystemName() + ' ' + getSystemVersion() + ';' + getApplicationName() + ' ' + getVersion();
 
-      await api.post(
-        '/setTokenConfiguration',
-        Object.assign({}, _getHeaders(), {
-          body: {
-            token: pushToken.token,
-            os: pushToken.os,
-            lang,
-            app_version: appVersion,
-          },
+      await fetch(`${baseURI}/setTokenConfiguration`, {
+        method: 'POST',
+        headers: _getHeaders(),
+        body: JSON.stringify({
+          token: pushToken.token,
+          os: pushToken.os,
+          lang,
+          app_version: appVersion,
         }),
-      );
+      });
     } catch (_) {}
   };
 

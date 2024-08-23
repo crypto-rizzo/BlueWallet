@@ -20,7 +20,11 @@ DerivedData
 *.hmap
 *.ipa
 *.xcuserstate
-
+**/.xcode.env.local
+*.hprof
+.cxx/
+*.keystore
+!debug.keystore
 # Android/IntelliJ
 #
 build/
@@ -28,6 +32,9 @@ build/
 .gradle
 local.properties
 *.iml
+
+# testing
+/coverage
 
 # node.js
 #
@@ -51,6 +58,8 @@ buck-out/
 */fastlane/report.xml
 */fastlane/Preview.html
 */fastlane/screenshots
+**/fastlane/test_output
+ios/fastlane
 
 # Bundle artifact
 *.jsbundle
@@ -60,8 +69,13 @@ release-notes.json
 release-notes.txt
 current-branch.json
 
-ios/Pods/
+# Ruby / CocoaPods
+**/Pods/
+/vendor/bundle/
+ios/BlueWallet.xcodeproj/xcuserdata/
 
+# Temporary files created by Metro to check the health of the file watcher
+.metro-health-check*
 artifacts/
 
 # Editors
@@ -71,3 +85,10 @@ artifacts/
 *.mx
 *.realm
 *.realm.lock
+android/app/.project
+android/app/.classpath
+android/.settings/org.eclipse.buildship.core.prefs
+android/.project
+android/.settings/org.eclipse.buildship.core.prefs
+android/app/.classpath
+android/app/.project

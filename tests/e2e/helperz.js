@@ -1,21 +1,31 @@
-const createHash = require('create-hash');
+import createHash from 'create-hash';
 
-export async function yo(id, timeout = 33000) {
+export function yo(id, timeout = 33000) {
   return waitFor(element(by.id(id)))
     .toBeVisible()
     .withTimeout(timeout);
 }
 
-export async function sup(text, timeout = 33000) {
+export function sup(text, timeout = 33000) {
   return waitFor(element(by.text(text)))
     .toBeVisible()
     .withTimeout(timeout);
+}
+
+export async function getSwitchValue(switchId) {
+  try {
+    await expect(element(by.id(switchId))).toHaveToggleValue(true);
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 export async function helperImportWallet(importText, walletType, expectedWalletLabel, expectedBalance, passphrase) {
   await yo('WalletsList');
 
   await element(by.id('WalletsList')).swipe('left', 'fast', 1); // in case emu screen is small and it doesnt fit
+  await sleep(200); // Wait until bounce animation finishes.
   // going to Import Wallet screen and importing mnemonic
   await element(by.id('CreateAWallet')).tap();
   await element(by.id('ImportWallet')).tap();
@@ -114,6 +124,7 @@ export const expectToBeVisible = async id => {
 
 export async function helperCreateWallet(walletName) {
   await element(by.id('WalletsList')).swipe('left', 'fast', 1); // in case emu screen is small and it doesnt fit
+  await sleep(200); // Wait until bounce animation finishes.
   await element(by.id('CreateAWallet')).tap();
   await element(by.id('WalletNameInput')).replaceText(walletName || 'cr34t3d');
   await yo('ActivateBitcoinButton');

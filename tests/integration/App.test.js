@@ -1,38 +1,30 @@
 import assert from 'assert';
 import React from 'react';
 import TestRenderer from 'react-test-renderer';
-import Settings from '../../screen/settings/settings';
-import Selftest from '../../screen/selftest';
-import { BlueHeader } from '../../BlueComponents';
-import * as BlueElectrum from '../../blue_modules/BlueElectrum';
 
-jest.mock('react-native-qrcode-svg', () => 'Video');
+import { Header } from '../../components/Header';
+import SelfTest from '../../screen/settings/SelfTest';
+import Settings from '../../screen/settings/Settings';
 
-beforeAll(async () => {
-  // awaiting for Electrum to be connected. For RN Electrum would naturally connect
-  // while app starts up, but for tests we need to wait for it
-  await BlueElectrum.connectMain();
-  jest.useFakeTimers();
+jest.mock('../../blue_modules/BlueElectrum', () => {
+  return {
+    connectMain: jest.fn(),
+  };
 });
 
-afterAll(() => {
-  jest.useRealTimers();
-  // after all tests we close socket so the test suite can actually terminate
-  BlueElectrum.forceDisconnect();
-});
-
-it('BlueHeader works', () => {
-  const rendered = TestRenderer.create(<BlueHeader />).toJSON();
+it('Header works', () => {
+  const rendered = TestRenderer.create(<Header />).toJSON();
   expect(rendered).toBeTruthy();
 });
 
+// eslint-disable-next-line jest/no-disabled-tests
 it.skip('Settings work', () => {
   const rendered = TestRenderer.create(<Settings />).toJSON();
   expect(rendered).toBeTruthy();
 });
 
-it('Selftest work', () => {
-  const component = TestRenderer.create(<Selftest />);
+it('SelfTest work', () => {
+  const component = TestRenderer.create(<SelfTest />);
   const root = component.root;
   const rendered = component.toJSON();
   expect(rendered).toBeTruthy();

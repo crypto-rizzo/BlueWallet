@@ -76,15 +76,17 @@ In another terminal window within the BlueWallet folder:
 ```
 npx react-native run-ios
 ```
+**To debug BlueWallet on the iOS Simulator, you must choose a Rosetta-compatible iOS Simulator. This can be done by navigating to the Product menu in Xcode, selecting Destination Architectures, and then opting for "Show Both." This action will reveal the simulators that support Rosetta.
+**
 
 * To run on macOS using Mac Catalyst:
 
 ```
-npm run maccatalystpatches
+npx pod-install
+npm start
 ```
 
-Once the patches are applied, open Xcode and select "My Mac" as destination. If you are running macOS Catalina, you may need to remove all iOS 14 Widget targets.
-
+Open ios/BlueWallet.xcworkspace. Once the project loads, select the scheme/target BlueWallet. Click Run.
 
 ## TESTS
 
@@ -93,24 +95,17 @@ npm run test
 ```
 
 
-## MOTIVATION TO BUILD IT
-
-I was not satisfied with existing iOS Bitcoin apps, especially with BreadWallet (the one I mainly used) where development stalled and they could not even deliver such features as SegWit, RBF and custom fees (at the times where custom fees were especially needed).
-So I knew I could create one to use myself and let others use it.
-I had experience with awesome bitcoin-js lib (javascript), and since I don't own any Macs, I don't plan to, and not going to learn ObjC/Swift - ReactNative (where you also write in javascript) was an obvious choice.
-
-
 ## LICENSE
 
 MIT
 
 ## WANT TO CONTRIBUTE?
 
-Grab an issue from [the backlog](https://github.com/BlueWallet/BlueWallet/projects/1), try to start or submit a PR, any doubts we will try to guide you. Contributors have a private telegram group, request access by email bluewallet@bluewallet.io
+Grab an issue from [the backlog](https://github.com/BlueWallet/BlueWallet/issues), try to start or submit a PR, any doubts we will try to guide you. Contributors have a private telegram group, request access by email bluewallet@bluewallet.io
 
 ## Translations
 
-We accepts translations via [Transifex](https://www.transifex.com/bluewallet/bluewallet/)
+We accept translations via [Transifex](https://www.transifex.com/bluewallet/bluewallet/)
 
 To participate you need to:
 1. Sign up to Transifex

@@ -1,6 +1,6 @@
 import assert from 'assert';
 
-import { SLIP39LegacyP2PKHWallet, SLIP39SegwitP2SHWallet, SLIP39SegwitBech32Wallet } from '../../class';
+import { SLIP39LegacyP2PKHWallet, SLIP39SegwitBech32Wallet, SLIP39SegwitP2SHWallet } from '../../class';
 
 global.crypto = require('crypto');
 
@@ -41,6 +41,18 @@ describe('SLIP39 wallets tests', () => {
     assert.strictEqual(w._getExternalAddressByIndex(1), '1LDm2yFgHesgVjENC4cEpvUnW5HdYp51gX');
     assert.strictEqual(w._getInternalAddressByIndex(0), '1EeW2xsK52vqBpsFLYa1vL6hyxmWCsK3Nx');
     assert.strictEqual(w._getInternalAddressByIndex(1), '1EM8ADickQ9WppVgSGGgjL8PGWhbbTqNpW');
+  });
+
+  it('SLIP39LegacyP2PKHWallet can work with truncated words', async () => {
+    const w = new SLIP39LegacyP2PKHWallet();
+    // 4. Basic sharing 2-of-3 (128 bits)
+    w.setSecret(
+      'SHAD PIS ACAD ALWA ADEQ WILD FANC GROS OASI CYLI MUST WRIS RESC VIEW SHOR OWNER FLIP MAKI CODI ARME\n' +
+        'SHAD PIS ACAD ACI ACTR PRAY CLAS UNKN DAUG SWEA DEPI FLI TWIC UNKI CRAF EARL SUPE ADVO GUES SMOK',
+    );
+
+    assert.ok(w.validateMnemonic());
+    assert.strictEqual(w._getExternalAddressByIndex(0), '18pvMjy7AJbCDtv4TLYbGPbR7SzGzjqUpj');
   });
 
   it('SLIP39SegwitP2SHWallet can generate addresses', async () => {

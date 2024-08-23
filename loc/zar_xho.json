@@ -3,14 +3,42 @@
     "bad_password": "Iphasiwedi engalunganga, zama kwakhona",
     "cancel": "Rhoxisa",
     "continue": "Qhubeka",
-    "enter_password": "Faka inombolo yokuvula",
-    "never": "Ungalingi",
-    "ok": "OK",
-    "storage_is_encrypted": "Ukugcinwa kwakho kubhaliwe. Inombolo yokuvula iyadingeka ukuba ichithwe"
+    "clipboard": "ibhodi eqhotyoshwayo",
+    "discard_changes": "Lahla utshintsho?",
+    "discard_changes_explain": "Unotshintsho olungagcinwanga. Uqinisekile ukuba ufuna ukuzilahla kwaye ushiye isikrini?",
+    "enter_password": "ngenisa igama lokugqitha",
+    "never": "Soze",
+    "ok": "Kulungile",
+    "storage_is_encrypted": "Indawo yakho yokugcina inoguqulelo oluntsonkothileyo. Igama lokugqitha liyafuneka ukuyisusa ngokuntsonkotha.",
+    "yes": "Ewe",
+    "no": "Hayi",
+    "save": "Gcina",
+    "seed": "Imbewu",
+    "success": "Imphumelelo",
+    "wallet_key": "Isitshixo sesipaji",
+    "invalid_animated_qr_code_fragment": "Iqhekeza leKhowudi ye-QR ephilayo engasebenziyo. Nceda zama kwakhona.",
+    "close": "Kufutshane",
+    "change_input_currency": "Guqula imali yokufaka",
+    "refresh": "Hlaziya",
+    "more": "Kaninzi",
+    "pick_image": "Khetha umfanekiso kwithala leencwadi",
+    "pick_file": "Khetha ifayile",
+    "enter_amount": "Faka imali",
+    "qr_custom_input_button": "Cofa amaxesha ali-10 ukufaka igalelo lesiqhelo"
+  },
+  "alert": {
+    "default": "Isilumkiso"
+  },
+  "azteco": {
+    "codeIs": "Ikhowudi yakho yevawutsha ithi",
+    "errorBeforeRefeem": "Ngaphambi kokuba uhlawule, kufuneka uqale wongeze i-wallet ye-Bitcoin.",
+    "success": "Iphumelele"
+  },
+  "entropy": {
+    "save": "ndoloza"
   },
   "lnd": {
     "expired": "Iphelewe lixesha",
-    "placeholder": "Invoyisi",
     "refill": "Gcwalisa",
     "refill_lnd_balance": "Gcwalisa ingxowa yakho yemali",
     "sameWalletAsInvoiceError": ": Awukwazi ukuhlawula i-invoyisi kunye ngengxowa oyisebenzisile ukudala leyo invoyisi.",
@@ -24,7 +52,7 @@
     "help2": "Igumbi lokugcina elitsha liza kusebenza ngokupheleleyo, kwaye unako ukugcina okunye ‘ + ‘lxabiso elincinci apho likhangeleka ngakumbi.",
     "password_should_not_match": "Inombolo yakho yokuvula igumbi lokugcina inkohliso akumele ifane ne nombolo yokuvula  igumbi lakho  elinyanisekileyo",
     "passwords_do_not_match": "Inombolo yokuvula ayihambelani, zama kwakhona",
-    "retype_password": "Phinda inombolo yokuvula",
+    "confirm_password": "Phinda inombolo yokuvula",
     "success": "Iphumelele",
     "title": "Ukuphika"
   },
@@ -32,17 +60,17 @@
     "details_create": "Yenza",
     "details_label": "Inkcazo",
     "details_setAmount": "Fumana ngexabiso",
-    "details_share": "yabelana",
     "header": "Fumana"
   },
   "send": {
+    "broadcastButton": "Sasazwa",
+    "broadcastSuccess": "Iphumelele",
     "confirm_header": "Qiniseka",
     "confirm_sendNow": "Thumela ngoku",
     "create_amount": "Isixa",
     "create_broadcast": "Sasazwa",
     "create_details": "Iinkcukacha",
     "create_fee": "Ntlawulo",
-    "create_satoshi_per_byte": "Satoshi nge-byte",
     "create_this_is_hex": "Le yi ntengo hex, ityikityiwe ilungele ukukhutshelwa kumnatha.",
     "create_to": "Iya ku",
     "create_tx_size": "TX ubungakanani",
@@ -55,31 +83,33 @@
     "details_scan": "Ukutshekisha",
     "details_total_exceeds_balance": "Imali yokuthumela idlula imali ekhoyo.",
     "header": "Thumela",
+    "input_done": "Kwenzekile",
     "success_done": "Kwenzekile"
   },
   "settings": {
     "about": "Malunga",
     "currency": "Lwemali",
+    "electrum_clear_alert_cancel": "Rhoxisa",
     "general_adv_mode": "Enable advanced mode",
     "header": "Izicwangciso",
     "language": "Ulwimi",
     "lightning_settings": "Izixhobo zokukhanyisa",
-    "lightning_settings_explain": "Ukuxhuma kwi-node yakho ye-LND nceda ufake iLndHub kwaye ufake iURL apha izicwangciso. Shiya kungenanto yokusebenzisa iLndHub (Indhub.io)",
     "password": "Inombolo yokuvula",
     "password_explain": "Ukudala iinombolo yokuvula oyisebenzisayo ukucima ukugcina",
     "passwords_do_not_match": "Inombolo yokuvula azifani",
     "plausible_deniability": "Ukuphika...",
-    "retype_password": "Phina inombolo yokuvula",
+    "confirm_password": "Phina inombolo yokuvula",
     "save": "ndoloza"
   },
   "transactions": {
+    "cpfp_create": "Yakha",
     "details_copy": "Ikopi",
     "details_from": "Negalelo",
     "details_show_in_block_explorer": "Bonisa ibhloko umhloi",
     "details_title": "Ngeniswa",
     "details_to": "Mveliso",
-    "details_transaction_details": "Iinkcukacha zentengiselwano",
-    "list_title": "ngeniswa"
+    "list_title": "ngeniswa",
+    "transaction": "Ngeniswa"
   },
   "wallets": {
     "add_bitcoin_explain": "Simple and powerful Bitcoin wallet",
@@ -87,7 +117,6 @@
     "add_import_wallet": "Ukungenisa ingxowa",
     "add_lightning": "Umbane",
     "add_lightning_explain": "For spending with instant transactions",
-    "add_or": "okanye",
     "add_title": "yongeza ingxowa",
     "add_wallet_name": "igama lengxowa",
     "add_wallet_type": "uhlobo",
@@ -99,25 +128,33 @@
     "details_save": "Gcina",
     "details_show_xpub": "Bonise ingxowa XPUB",
     "details_title": "Ingxowa",
+    "wallets": "Ingxowa",
     "details_type": "Uhlobo",
     "details_yes_delete": "Ewe, yisuse",
     "export_title": "ukuthunyelwa kweebhanki ",
     "import_do_import": "Ngeniswe",
     "import_error": "Ayiphumelelanga ukungenisa. Nceda, uqiniseka ukuba idata ehlinzekiweyo iyasebenza.",
-    "import_explanation": "Bhale apha imnemonic yakho, ngundoqo, WIF , okanye nantoni na onayo. BlueWallet uya kwenza konke okusemandleni ukuqiqa ifomathi efanelekileyo kwaye ingenise ingxowa yakho",
     "import_imported": "Ngenisiwe",
     "import_scan_qr": "okanye ukukhangela iQR code?",
     "import_success": "Iphumelele",
     "import_title": "ukungenisa",
     "list_create_a_wallet": "Yenza ingxowa",
     "list_empty_txs1": "Intengiso yakho iya kubonakala apha,",
-    "list_empty_txs2": "akuho nanye okwangoku",
     "list_latest_transaction": "Utshintsho olutsha",
-    "list_tap_here_to_buy": "Cofa apha ukuthenga ibitcoin",
     "list_title": "Ingxowa",
-    "reorder_title": "Yenza kwakhona ingxowa",
     "select_wallet": "Khetha ingxowa",
     "xpub_copiedToClipboard": "Ikopishwe kwi-clipboard",
     "xpub_title": "ingxowa XPUB"
+  },
+  "multisig": {
+    "confirm": "Qiniseka",
+    "header": "Thumela",
+    "create": "Yakha",
+    "ms_help_title5": "Enable advanced mode"
+  },
+  "addresses": {
+    "sign_placeholder_address": "idilesi",
+    "type_receive": "Fumana",
+    "transactions": "ngeniswa"
   }
 }

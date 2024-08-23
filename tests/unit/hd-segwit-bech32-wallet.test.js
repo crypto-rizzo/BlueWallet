@@ -1,4 +1,6 @@
 import assert from 'assert';
+import * as bitcoin from 'bitcoinjs-lib';
+
 import { HDSegwitBech32Wallet } from '../../class';
 
 describe('Bech32 Segwit HD (BIP84)', () => {
@@ -211,5 +213,122 @@ describe('Bech32 Segwit HD (BIP84)', () => {
     assert.notStrictEqual(id1, id2);
     assert.notStrictEqual(id2, id3);
     assert.notStrictEqual(id1, id3);
+  });
+
+  it('can createTransaction with a correct feerate (with lenghty segwit address)', () => {
+    if (!process.env.HD_MNEMONIC_BIP84) {
+      console.error('process.env.HD_MNEMONIC_BIP84 not set, skipped');
+      return;
+    }
+    const hd = new HDSegwitBech32Wallet();
+    hd.setSecret(process.env.HD_MNEMONIC_BIP84);
+    assert.ok(hd.validateMnemonic());
+
+    const utxo = [
+      {
+        address: 'bc1q063ctu6jhe5k4v8ka99qac8rcm2tzjjnuktyrl',
+        vout: 0,
+        txid: '8b0ab2c7196312e021e0d3dc73f801693826428782970763df6134457bd2ec20',
+        value: 69909,
+        wif: '-',
+      },
+    ];
+
+    const { tx, psbt, outputs } = hd.createTransaction(
+      utxo,
+      [{ address: 'bc1qtmcfj7lvgjp866w8lytdpap82u7eege58jy52hp4ctk0hsncegyqel8prp', value: 546 }],
+      10,
+      'bc1qtmcfj7lvgjp866w8lytdpap82u7eege58jy52hp4ctk0hsncegyqel8prp',
+    );
+
+    assert.strictEqual(outputs.length, 2);
+
+    const actualFeerate = psbt.getFee() / tx.virtualSize();
+    assert.strictEqual(
+      Math.round(actualFeerate) >= 10 && actualFeerate <= 11,
+      true,
+      `bad feerate, got ${actualFeerate}, expected at least 10; fee: ${psbt.getFee()}; virsualSize: ${tx.virtualSize()} vbytes; ${tx.toHex()}`,
+    );
+  });
+
+  it('can createTransaction with OP_RETURN', () => {
+    if (!process.env.HD_MNEMONIC_BIP84) {
+      console.error('process.env.HD_MNEMONIC_BIP84 not set, skipped');
+      return;
+    }
+    const hd = new HDSegwitBech32Wallet();
+    hd.setSecret(process.env.HD_MNEMONIC_BIP84);
+    assert.ok(hd.validateMnemonic());
+
+    const utxo = [
+      {
+        address: 'bc1q063ctu6jhe5k4v8ka99qac8rcm2tzjjnuktyrl',
+        vout: 0,
+        txid: '8b0ab2c7196312e021e0d3dc73f801693826428782970763df6134457bd2ec20',
+        value: 69909,
+        wif: '-',
+      },
+    ];
+
+    const { tx, psbt, outputs } = hd.createTransaction(
+      utxo,
+      [
+        { address: hd._getExternalAddressByIndex(0), value: 546 },
+        { script: { hex: '00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff' }, value: 0 },
+      ],
+      150,
+      hd._getInternalAddressByIndex(0),
+    );
+
+    assert.strictEqual(outputs.length, 3); // destination, op_return, change
+    assert.ok(!outputs[1].address); // should not be there as it should be OP_RETURN
+
+    const decodedTx = bitcoin.Transaction.fromHex(tx.toHex());
+    // console.log(decodedTx.outs);
+
+    assert.strictEqual(decodedTx.outs[0].value, 546); // first output - destination
+    assert.strictEqual(decodedTx.outs[1].value, 0); // second output - op_return
+    assert.ok(decodedTx.outs[2].value > 0); // third output - change
+
+    assert.strictEqual(decodedTx.outs[1].script.toString('hex'), '00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff'); // custom script that we are passing
+
+    // console.log(outputs);
+
+    const actualFeerate = psbt.getFee() / tx.virtualSize();
+    assert.strictEqual(
+      Math.round(actualFeerate) >= 150 && actualFeerate < 151,
+      true,
+      `bad feerate, got ${actualFeerate}, expected at least 11; fee: ${psbt.getFee()}; virsualSize: ${tx.virtualSize()} vbytes; ${tx.toHex()}`,
+    );
+  });
+
+  it('can use french seed', async () => {
+    const hd = new HDSegwitBech32Wallet();
+    hd.setSecret('abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abaisser abeille');
+
+    assert.strictEqual(true, hd.validateMnemonic());
+    assert.strictEqual(hd._getExternalAddressByIndex(0), 'bc1q3gsf7a6es9603g9a2k50lqxxxtd7x9pt7r5z9s');
+    assert.strictEqual(hd._getInternalAddressByIndex(0), 'bc1q3ugpcustjrtt806uc5kqutlv5ue5sv0cfcr93c');
+  });
+
+  it('can import from standard SeedQR', () => {
+    const hd = new HDSegwitBech32Wallet();
+    hd.setSecret('008607501025021714880023171503630517020917211425');
+    assert.strictEqual(hd.getSecret(), 'approve fruit lens brass ring actual stool coin doll boss strong rate');
+    assert.ok(hd.validateMnemonic());
+
+    const hd2 = new HDSegwitBech32Wallet();
+    hd2.setSecret('075707570757075700000000043911730136013601360757');
+    assert.strictEqual(hd2.getSecret(), 'gadget gadget gadget gadget abandon abandon dad naive baby baby baby gadget');
+    assert.ok(hd2.validateMnemonic());
+
+    const hd3 = new HDSegwitBech32Wallet();
+    hd3.setSecret('0757075707570757000000000439117301360136013607'); // invalid length
+    assert.ok(!hd3.validateMnemonic());
+
+    const hd4 = new HDSegwitBech32Wallet();
+    hd4.setSecret('07570757075707abcdef0000043911730136013601360757'); // invalid symbols
+
+    assert.ok(!hd4.validateMnemonic());
   });
 });

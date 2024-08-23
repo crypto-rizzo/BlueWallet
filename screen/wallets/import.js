@@ -1,23 +1,22 @@
-import React, { useEffect, useState, useContext } from 'react';
-import { Platform, View, Keyboard, StyleSheet, Switch, TouchableWithoutFeedback } from 'react-native';
-import { useNavigation, useRoute, useTheme } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
+import { Keyboard, Platform, StyleSheet, Switch, TouchableWithoutFeedback, View } from 'react-native';
 
 import {
-  BlueButton,
   BlueButtonLink,
   BlueDoneAndDismissKeyboardInputAccessory,
   BlueFormLabel,
   BlueFormMultiInput,
   BlueSpacing20,
   BlueText,
-  SafeBlueArea,
 } from '../../BlueComponents';
-import navigationStyle from '../../components/navigationStyle';
-import Privacy from '../../blue_modules/Privacy';
+import Button from '../../components/Button';
+import SafeArea from '../../components/SafeArea';
+import { useTheme } from '../../components/themes';
+import { requestCameraAuthorization } from '../../helpers/scan-qr';
+import usePrivacy from '../../hooks/usePrivacy';
 import loc from '../../loc';
-import { isMacCatalina } from '../../blue_modules/environment';
-import { BlueStorageContext } from '../../blue_modules/storage-context';
-const fs = require('../../blue_modules/fs');
+import { useSettings } from '../../hooks/context/useSettings';
 
 const WalletsImport = () => {
   const navigation = useNavigation();
@@ -25,13 +24,14 @@ const WalletsImport = () => {
   const route = useRoute();
   const label = route?.params?.label ?? '';
   const triggerImport = route?.params?.triggerImport ?? false;
-  const { isAdancedModeEnabled } = useContext(BlueStorageContext);
+  const scannedData = route?.params?.scannedData ?? '';
+  const { isAdvancedModeEnabled } = useSettings();
   const [importText, setImportText] = useState(label);
   const [isToolbarVisibleForAndroid, setIsToolbarVisibleForAndroid] = useState(false);
   const [, setSpeedBackdoor] = useState(0);
-  const [isAdvancedModeEnabledRender, setIsAdvancedModeEnabledRender] = useState(false);
   const [searchAccounts, setSearchAccounts] = useState(false);
   const [askPassphrase, setAskPassphrase] = useState(false);
+  const { enableBlur, disableBlur } = usePrivacy();
 
   const styles = StyleSheet.create({
     root: {
@@ -59,21 +59,32 @@ const WalletsImport = () => {
   };
 
   useEffect(() => {
-    Privacy.enableBlur();
-    Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () => setIsToolbarVisibleForAndroid(true));
-    Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setIsToolbarVisibleForAndroid(false));
+    enableBlur();
+
+    const showSubscription = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', () =>
+      setIsToolbarVisibleForAndroid(true),
+    );
+    const hideSubscription = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () =>
+      setIsToolbarVisibleForAndroid(false),
+    );
     return () => {
-      Keyboard.removeListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide');
-      Keyboard.removeListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow');
-      Privacy.disableBlur();
+      showSubscription.remove();
+      hideSubscription.remove();
+      disableBlur();
     };
-  }, []);
+  }, [disableBlur, enableBlur]);
 
   useEffect(() => {
-    isAdancedModeEnabled().then(setIsAdvancedModeEnabledRender);
     if (triggerImport) importButtonPressed();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [triggerImport]);
+
+  useEffect(() => {
+    if (scannedData) {
+      onBarScanned(scannedData);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scannedData]);
 
   const importButtonPressed = () => {
     const textToImport = onBlur();
@@ -83,8 +94,8 @@ const WalletsImport = () => {
     importMnemonic(textToImport);
   };
 
-  const importMnemonic = importText => {
-    navigation.navigate('ImportWalletDiscovery', { importText, askPassphrase, searchAccounts });
+  const importMnemonic = text => {
+    navigation.navigate('ImportWalletDiscovery', { importText: text, askPassphrase, searchAccounts });
   };
 
   const onBarScanned = value => {
@@ -94,18 +105,15 @@ const WalletsImport = () => {
   };
 
   const importScan = () => {
-    if (isMacCatalina) {
-      fs.showActionSheet().then(onBarScanned);
-    } else {
+    requestCameraAuthorization().then(() =>
       navigation.navigate('ScanQRCodeRoot', {
         screen: 'ScanQRCode',
         params: {
           launchedBy: route.name,
-          onBarScanned: onBarScanned,
           showFileImportButton: true,
         },
-      });
-    }
+      }),
+    );
   };
 
   const speedBackdoorTap = () => {
@@ -119,7 +127,7 @@ const WalletsImport = () => {
 
   const renderOptionsAndImportButton = (
     <>
-      {isAdvancedModeEnabledRender && (
+      {isAdvancedModeEnabled && (
         <>
           <View style={styles.row}>
             <BlueText>{loc.wallets.import_passphrase}</BlueText>
@@ -135,7 +143,7 @@ const WalletsImport = () => {
       <BlueSpacing20 />
       <View style={styles.center}>
         <>
-          <BlueButton
+          <Button
             disabled={importText.trim().length === 0}
             title={loc.wallets.import_do_import}
             testID="DoImport"
@@ -149,9 +157,9 @@ const WalletsImport = () => {
   );
 
   return (
-    <SafeBlueArea style={styles.root}>
+    <SafeArea style={styles.root}>
       <BlueSpacing20 />
-      <TouchableWithoutFeedback onPress={speedBackdoorTap} testID="SpeedBackdoor">
+      <TouchableWithoutFeedback accessibilityRole="button" onPress={speedBackdoorTap} testID="SpeedBackdoor">
         <BlueFormLabel>{loc.wallets.import_explanation}</BlueFormLabel>
       </TouchableWithoutFeedback>
       <BlueSpacing20 />
@@ -189,10 +197,8 @@ const WalletsImport = () => {
           />
         ),
       })}
-    </SafeBlueArea>
+    </SafeArea>
   );
 };
-
-WalletsImport.navigationOptions = navigationStyle({}, opts => ({ ...opts, title: loc.wallets.import_title }));
 
 export default WalletsImport;

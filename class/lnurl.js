@@ -1,9 +1,11 @@
 import { bech32 } from 'bech32';
 import bolt11 from 'bolt11';
-import { isTorDaemonDisabled } from '../blue_modules/environment';
-const CryptoJS = require('crypto-js');
-const createHash = require('create-hash');
-const torrific = require('../blue_modules/torrific');
+import createHash from 'create-hash';
+import { createHmac } from 'crypto';
+import CryptoJS from 'crypto-js';
+import secp256k1 from 'secp256k1';
+import { parse } from 'url'; // eslint-disable-line n/no-deprecated-api
+
 const ONION_REGEX = /^(http:\/\/[^/:@]+\.onion(?::\d{1,5})?)(\/.*)?$/; // regex for onion URL
 
 /**
@@ -12,6 +14,7 @@ const ONION_REGEX = /^(http:\/\/[^/:@]+\.onion(?::\d{1,5})?)(\/.*)?$/; // regex 
 export default class Lnurl {
   static TAG_PAY_REQUEST = 'payRequest'; // type of LNURL
   static TAG_WITHDRAW_REQUEST = 'withdrawRequest'; // type of LNURL
+  static TAG_LOGIN_REQUEST = 'login'; // type of LNURL
 
   constructor(url, AsyncStorage) {
     this._lnurl = url;
@@ -62,11 +65,6 @@ export default class Lnurl {
   }
 
   async fetchGet(url) {
-    const parsedOnionUrl = Lnurl.parseOnionUrl(url);
-    if (parsedOnionUrl) {
-      return _fetchGetTor(parsedOnionUrl);
-    }
-
     const resp = await fetch(url, { method: 'GET' });
     if (resp.status >= 300) {
       throw new Error('Bad response from server');
@@ -113,7 +111,7 @@ export default class Lnurl {
 
     if (!decoded.expiry) decoded.expiry = '3600'; // default
 
-    if (parseInt(decoded.num_satoshis) === 0 && decoded.num_millisatoshis > 0) {
+    if (parseInt(decoded.num_satoshis, 10) === 0 && decoded.num_millisatoshis > 0) {
       decoded.num_satoshis = (decoded.num_millisatoshis / 1000).toString();
     }
 
@@ -148,9 +146,9 @@ export default class Lnurl {
     const decoded = this.decodeInvoice(this._lnurlPayServiceBolt11Payload.pr);
     const metadataHash = createHash('sha256').update(this._lnurlPayServicePayload.metadata).digest('hex');
     if (metadataHash !== decoded.description_hash) {
-      throw new Error(`Invoice description_hash doesn't match metadata.`);
+      console.log(`Invoice description_hash doesn't match metadata.`);
     }
-    if (parseInt(decoded.num_satoshis) !== Math.round(amountSat)) {
+    if (parseInt(decoded.num_satoshis, 10) !== Math.round(amountSat)) {
       throw new Error(`Invoice doesn't match specified amount, got ${decoded.num_satoshis}, expected ${Math.round(amountSat)}`);
     }
 
@@ -282,7 +280,50 @@ export default class Lnurl {
   }
 
   getCommentAllowed() {
-    return this?._lnurlPayServicePayload?.commentAllowed ? parseInt(this._lnurlPayServicePayload.commentAllowed) : false;
+    return this?._lnurlPayServicePayload?.commentAllowed ? parseInt(this._lnurlPayServicePayload.commentAllowed, 10) : false;
+  }
+
+  getMin() {
+    return this?._lnurlPayServicePayload?.min ? parseInt(this._lnurlPayServicePayload.min, 10) : false;
+  }
+
+  getMax() {
+    return this?._lnurlPayServicePayload?.max ? parseInt(this._lnurlPayServicePayload.max, 10) : false;
+  }
+
+  getAmount() {
+    return this.getMin();
+  }
+
+  authenticate(secret) {
+    return new Promise((resolve, reject) => {
+      if (!this._lnurl) throw new Error('this._lnurl is not set');
+
+      const url = parse(Lnurl.getUrlFromLnurl(this._lnurl), true);
+
+      const hmac = createHmac('sha256', secret);
+      hmac.on('readable', async () => {
+        try {
+          const privateKey = hmac.read();
+          if (!privateKey) return;
+          const privateKeyBuf = Buffer.from(privateKey, 'hex');
+          const publicKey = secp256k1.publicKeyCreate(privateKeyBuf);
+          const signatureObj = secp256k1.sign(Buffer.from(url.query.k1, 'hex'), privateKeyBuf);
+          const derSignature = secp256k1.signatureExport(signatureObj.signature);
+
+          const reply = await this.fetchGet(`${url.href}&sig=${derSignature.toString('hex')}&key=${publicKey.toString('hex')}`);
+          if (reply.status === 'OK') {
+            resolve();
+          } else {
+            reject(reply.reason);
+          }
+        } catch (err) {
+          reject(err);
+        }
+      });
+      hmac.write(url.hostname);
+      hmac.end();
+    });
   }
 
   static isLightningAddress(address) {
@@ -291,29 +332,4 @@ export default class Lnurl {
     const splitted = address.split('@');
     return !!splitted[0].trim() && !!splitted[1].trim();
   }
-}
-
-async function _fetchGetTor(parsedOnionUrl) {
-  const torDaemonDisabled = await isTorDaemonDisabled();
-  if (torDaemonDisabled) {
-    throw new Error('Tor onion url support disabled');
-  }
-  const [baseURI, path] = parsedOnionUrl;
-  const tor = new torrific.Torsbee({
-    baseURI,
-  });
-  const response = await tor.get(path || '/', {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Content-Type': 'application/json',
-    },
-  });
-  const json = response.body;
-  if (typeof json === 'undefined' || response.err) {
-    throw new Error('Bad response from server: ' + response.err + ' ' + JSON.stringify(response.body));
-  }
-  if (json.status === 'ERROR') {
-    throw new Error('Reply from server: ' + json.reason);
-  }
-  return json;
 }

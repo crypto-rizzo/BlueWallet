@@ -1,7 +1,8 @@
-import { WatchOnlyWallet } from '../../class';
-import { decodeUR, encodeUR, setUseURv1, clearUseURv1, extractSingleWorkload, BlueURDecoder } from '../../blue_modules/ur';
+import assert from 'assert';
 import { Psbt } from 'bitcoinjs-lib';
-const assert = require('assert');
+
+import { BlueURDecoder, clearUseURv1, decodeUR, encodeUR, extractSingleWorkload, setUseURv1 } from '../../blue_modules/ur';
+import { WatchOnlyWallet } from '../../class';
 
 describe('Watch only wallet', () => {
   it('can validate address', async () => {
@@ -33,7 +34,7 @@ describe('Watch only wallet', () => {
       w.setSecret(secret);
       assert.ok(w.valid());
       assert.strictEqual(w.isHd(), true);
-      assert.strictEqual(w.getMasterFingerprint(), false);
+      assert.strictEqual(w.getMasterFingerprint(), 0);
       assert.strictEqual(w.getMasterFingerprintHex(), '00000000');
       assert.ok(w.isXpubValid(), w.secret);
       assert.ok(!w.useWithHardwareWalletEnabled());
@@ -126,18 +127,13 @@ describe('Watch only wallet', () => {
         height: 596736,
         value: 20000,
         address: 'bc1qhu8jqyzfazgatpctqn44xr7pdd3mdx6qy2r6xa',
-        txId: '7f3b9e032a84413d7a5027b0d020f8acf80ad28f68b5bce8fa8ac357248c5b80',
+        txid: '7f3b9e032a84413d7a5027b0d020f8acf80ad28f68b5bce8fa8ac357248c5b80',
         vout: 0,
       },
     ];
     // hardcoding utxo so we wont have to call w.fetchUtxo() and w.getUtxo()
 
-    const { psbt } = await w.createTransaction(
-      utxos,
-      [{ address: 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu', value: 5000 }],
-      1,
-      changeAddress,
-    );
+    const { psbt } = w.createTransaction(utxos, [{ address: 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu', value: 5000 }], 1, changeAddress);
 
     assert.strictEqual(
       psbt.toBase64(),
@@ -164,10 +160,8 @@ describe('Watch only wallet', () => {
         height: 618811,
         value: 66600,
         address: 'bc1qzqjwye4musmz56cg44ttnchj49zueh9yr0qsxt',
-        txId: '5df595dc09ee7a5c245b34ea519288137ffee731629c4ff322a6de4f72c06222',
         vout: 0,
         txid: '5df595dc09ee7a5c245b34ea519288137ffee731629c4ff322a6de4f72c06222',
-        amount: 66600,
         wif: false,
         confirmations: 1,
       },
@@ -204,10 +198,8 @@ describe('Watch only wallet', () => {
         height: 618811,
         value: 66600,
         address: 'bc1qzqjwye4musmz56cg44ttnchj49zueh9yr0qsxt',
-        txId: '5df595dc09ee7a5c245b34ea519288137ffee731629c4ff322a6de4f72c06222',
         vout: 0,
         txid: '5df595dc09ee7a5c245b34ea519288137ffee731629c4ff322a6de4f72c06222',
-        amount: 66600,
         wif: false,
         confirmations: 1,
       },
@@ -225,6 +217,57 @@ describe('Watch only wallet', () => {
       psbt.toBase64(),
       'cHNidP8BAHECAAAAASJiwHJP3qYi80+cYjHn/n8TiJJR6jRbJFx67gnclfVdAAAAAAAAAACAAogTAAAAAAAAFgAUb3eWXdETtv7KGyXiUxyIS+Q3wJ0U5AAAAAAAABYAFF8XCHdkg2yGn81L+plhb9iWamgBAAAAAAABAR8oBAEAAAAAABYAFBAk4ma75DYqawitVrni8qlFzNykIgYDNK9TxoCjQ8P0+qI2Hu4hrnXnJuYAC3h2puZbgRORp+sYFo3WA1QAAIAAAACAAQAAgAAAAAAAAAAAAAAiAgL1DWeV+AfIP5RRB5zHv5vuXsIt8+rF9rrsji3FhQlhzBgWjdYDVAAAgAAAAIABAACAAQAAAAAAAAAA',
     );
+  });
+
+  it('can import Electrum compatible backup wallet, and create a tx with master fingerprint hex', async () => {
+    const w = new WatchOnlyWallet();
+    w.setSecret(require('fs').readFileSync('./tests/unit/fixtures/skeleton-electrum-hex-only.txt', 'ascii'));
+    w.init();
+    assert.ok(w.valid());
+    assert.strictEqual(
+      w.getSecret(),
+      'zpub6rFDtF1nuXZ9PUL4XzKURh3vJBW6Kj6TUrYL4qPtFNtDXtcTVfiqjQDyrZNwjwzt5HS14qdqo3Co2282Lv3Re6Y5wFZxAVuMEpeygnnDwfx',
+    );
+    assert.strictEqual(w.getMasterFingerprint(), 1455298230);
+    assert.strictEqual(w.getMasterFingerprintHex(), 'b616be56');
+    assert.strictEqual(w.getDerivationPath(), "m/84'/0'/0'");
+    assert.ok(w.useWithHardwareWalletEnabled());
+  });
+
+  it('can import Electrum compatible backup wallet, and create a tx with master fingerprint hex with a length of 7', async () => {
+    const w = new WatchOnlyWallet();
+    let str = require('fs').readFileSync('./tests/unit/fixtures/skeleton-electrum-hex-only.txt', 'ascii');
+    str = str.replace('b616be56', '616be56');
+    // console.log(str)
+    w.setSecret(str);
+    w.init();
+    assert.ok(w.valid());
+    assert.strictEqual(
+      w.getSecret(),
+      'zpub6rFDtF1nuXZ9PUL4XzKURh3vJBW6Kj6TUrYL4qPtFNtDXtcTVfiqjQDyrZNwjwzt5HS14qdqo3Co2282Lv3Re6Y5wFZxAVuMEpeygnnDwfx',
+    );
+    assert.strictEqual(w.getMasterFingerprint(), 1455298054);
+    assert.strictEqual(w.getMasterFingerprintHex(), '0616be56');
+    assert.strictEqual(w.getDerivationPath(), "m/84'/0'/0'");
+    assert.ok(w.useWithHardwareWalletEnabled());
+  });
+
+  it('will fail to import Electrum compatible backup wallet when fingerprint hex is less than 7', async () => {
+    const w = new WatchOnlyWallet();
+    let str = require('fs').readFileSync('./tests/unit/fixtures/skeleton-electrum-hex-only.txt', 'ascii');
+    str = str.replace('b616be56', '16be56');
+    w.setSecret(str);
+    w.init();
+    assert.throws(w.valid, 'invalid fingerprint hex');
+  });
+
+  it('will fail to import Electrum compatible backup wallet when fingerprint is an invalid hex value', async () => {
+    const w = new WatchOnlyWallet();
+    let str = require('fs').readFileSync('./tests/unit/fixtures/skeleton-electrum-hex-only.txt', 'ascii');
+    str = str.replace('b616be56', 'j16be56');
+    w.setSecret(str);
+    w.init();
+    assert.throws(w.valid, 'invalid fingerprint hex');
   });
 
   it('can import cobo vault JSON skeleton wallet', async () => {
@@ -256,6 +299,55 @@ describe('Watch only wallet', () => {
     assert.strictEqual(w.getMasterFingerprintHex(), '8cce63f8');
     assert.strictEqual(w.getDerivationPath(), "m/84'/0'/0'");
     assert.ok(!w.useWithHardwareWalletEnabled());
+  });
+
+  it('can import wallet descriptor for BIP84, but with xpub instead of zpub', async () => {
+    const w = new WatchOnlyWallet();
+    w.setSecret(
+      '[dafedf1c/84h/0h/0h]xpub6DFMZMLizqqnyyHoWTG7qzmCR1irpiDEGT4JQX7ubeoFtV838ABKPfgAPQbM1TEekEyCuJF1BrmnA7JPrnzqi2VbycD3tVE3v5xsDQqYA3A',
+    );
+    w.init();
+    assert.ok(w.valid());
+
+    assert.strictEqual(w.getMasterFingerprintHex(), 'dafedf1c');
+    assert.strictEqual(w.getMasterFingerprint(), 484441818);
+    assert.strictEqual(w.getDerivationPath(), "m/84'/0'/0'");
+
+    assert.strictEqual(
+      w.getSecret(),
+      'zpub6rutAggZJCvkgZg3BAqNGAxCkx1khxCE6g6jyJugMfZ1zgkVdUWSdnzSRpWX1GYVZXCpQFS87BUsvgXXJBpsJVroiHbu4Js2TY69zbWcTNb',
+    );
+
+    assert.strictEqual(w._getExternalAddressByIndex(0), 'bc1q68y6r45k4kvxe42xl37dgjueg2suqwnh4ze0sr');
+
+    assert.ok(!w.useWithHardwareWalletEnabled());
+  });
+
+  it('can import wallet descriptor for BIP84 from Sparrow Wallet', async () => {
+    const payload =
+      'UR:CRYPTO-OUTPUT/TAADMWTAADDLOLAOWKAXHDCLAXINTOCTFTNNIERONTNYGALYEMAAWPHDAXDIEOWPJEGHKPGMKERHIABDTBLUBNMUMWAAHDCXFHSNBGTSGWSWPTDWVTDIHYHNHPLBBSJEOLSNFZBDIYJLTTPFIMEYTEECKTGSBZBDAHTAADEHOEADAEAOAEAMTAADDYOTADLNCSGHYKAEYKAEYKAOCYFNLBCYGMAXAXAYCYSRRTSPGADLMKBGTD';
+
+    const decoder = new BlueURDecoder();
+    decoder.receivePart(payload);
+    let data;
+    if (decoder.isComplete()) {
+      data = decoder.toString();
+    }
+
+    const w = new WatchOnlyWallet();
+    w.setSecret(data);
+    w.init();
+    assert.ok(w.valid());
+
+    assert.strictEqual(w.getMasterFingerprintHex(), '3c7f1a52');
+    assert.strictEqual(w.getDerivationPath(), "m/84'/0'/0'");
+
+    assert.strictEqual(w._getExternalAddressByIndex(0), 'bc1qr0y5c96xtfeulnzxnjl086f2njcmf8qmhenvpp');
+
+    assert.strictEqual(
+      w.getSecret(),
+      'zpub6rkkMBH6dE8bUPM9MC3WTMYQ3pDYR1kHnNDrqEGY3FotR4EUifR1S4xd7ynwczREFCbfWyk5S4mhzPL8YuGsCSgey1AwH7fk4w9AULpyDYL',
+    );
   });
 
   it('can combine signed PSBT and prepare it for broadcast', async () => {
@@ -318,10 +410,8 @@ describe('Watch only wallet', () => {
         height: 557538,
         value: 51432,
         address: '3GCvDBAktgQQtsbN6x5DYiQCMmgZ9Yk8BK',
-        txId: 'b2ac59bc282083498d1e87805d89bef9d3f3bc216c1d2c4dfaa2e2911b547100',
         vout: 0,
         txid: 'b2ac59bc282083498d1e87805d89bef9d3f3bc216c1d2c4dfaa2e2911b547100',
-        amount: 51432,
         wif: false,
         confirmations: 132402,
       },
@@ -329,12 +419,7 @@ describe('Watch only wallet', () => {
 
     const changeAddress = '3DrZBgntD8kBBbuKLJtPVAeGT75BMC7NxU';
 
-    const { psbt } = await w.createTransaction(
-      utxos,
-      [{ address: 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu', value: 5000 }],
-      1,
-      changeAddress,
-    );
+    const { psbt } = w.createTransaction(utxos, [{ address: 'bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu', value: 5000 }], 1, changeAddress);
 
     assert.strictEqual(
       psbt.data.outputs[1].bip32Derivation[0].pubkey.toString('hex'),
@@ -502,6 +587,34 @@ describe('BC-UR', () => {
 
     assert.ok(str.includes('E4F0DB12'));
     assert.ok(str.includes('Keystone Multisig setup file'));
+  });
+
+  it('v2: can decodeUR() into accounts', () => {
+    const decoder = new BlueURDecoder();
+    decoder.receivePart(
+      'UR:CRYPTO-ACCOUNT/OEADCYJKSKTNBKAOLSTAADMWTAADDLONAXHDCLAOJOKNIDZCPSSAJTPTRPFRCECFKKAMYKJTVTCSBTBDTKCFIYVYOETNEEYKWFNBNYNDAAHDCXGEGUNBPYCLRHUOMDLNNSGLMOOYHSCFGLAXRTWSFHYKADGESWMOWKEOSSKOGHMHZTAMTAADDYOTADLNCSGHYKAEYKAEYKAOCYJKSKTNBKAXAXATTAADDYOYADLRAEWKLAWKAYCYKBWFDNUYTAADMHTAADMWTAADDLONAXHDCLAOWNWFFLLDCWCXYLHFMNPLFMSOLNNERSRPKGSGRPWFHDEYJLBEWPSSCNHFRYGOMUNTAAHDCXJTPKVLIHPLBABKBKPYLREYHHZEKETSJZFRMHMHECYALDVDTEWNROFLPTNBKKKBSBAMTAADDYOTADLNCSEHYKAEYKAEYKAOCYJKSKTNBKAXAXATTAADDYOYADLRAEWKLAWKAYCYFSAHZMKPTAADMUTAADDLONAXHDCLAXKTGSMEBSTKATZSMTLOJTOSMWWTTLSGWENYZEDYQZGRLSYLVOBWRKMOMUBAKIWKRYAAHDCXFSOXRFCFBKDSLABYCAEHZSURUOMHHEDRLBJZVDKEJLBENLCFBYJLDAFSFXFYGMCFAMTAADDYOTADLNCSDWYKAEYKAEYKAOCYJKSKTNBKAXAXATTAADDYOYADLRAEWKLAWKAYCYBZHPSGHKSOPAJSLN',
+    );
+    let data = '';
+    if (decoder.isComplete()) {
+      data = decoder.toString();
+    }
+
+    const json = JSON.parse(data);
+
+    assert.ok(Array.isArray(json));
+    assert.strictEqual(json.length, 3);
+
+    assert.ok(json[0].ExtPubKey.startsWith('zpub'));
+    assert.ok(json[0].AccountKeyPath.startsWith('m/84'));
+    assert.ok(json[0].MasterFingerprint === '73C5DA0A');
+
+    assert.ok(json[1].ExtPubKey.startsWith('ypub'));
+    assert.ok(json[1].AccountKeyPath.startsWith('m/49'));
+    assert.ok(json[1].MasterFingerprint === '73C5DA0A');
+
+    assert.ok(json[2].ExtPubKey.startsWith('xpub'));
+    assert.ok(json[2].AccountKeyPath.startsWith('m/44'));
+    assert.ok(json[2].MasterFingerprint === '73C5DA0A');
   });
 
   it('v1: decodeUR() works', async () => {

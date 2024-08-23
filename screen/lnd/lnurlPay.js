@@ -1,40 +1,43 @@
-import React, { useState, useEffect, useContext } from 'react';
-import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRoute } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
 import { I18nManager, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useNavigation, useRoute, useTheme } from '@react-navigation/native';
-import { Icon } from 'react-native-elements';
-
-import {
-  BlueButton,
-  BlueCard,
-  BlueDismissKeyboardInputAccessory,
-  BlueLoading,
-  BlueSpacing20,
-  BlueText,
-  SafeBlueArea,
-} from '../../BlueComponents';
-import navigationStyle from '../../components/navigationStyle';
-import AmountInput from '../../components/AmountInput';
+import { Icon } from '@rneui/themed';
+import { btcToSatoshi, fiatToBTC, satoshiToBTC, satoshiToLocalCurrency } from '../../blue_modules/currency';
+import triggerHapticFeedback, { HapticFeedbackTypes } from '../../blue_modules/hapticFeedback';
+import { BlueCard, BlueDismissKeyboardInputAccessory, BlueLoading, BlueSpacing20, BlueText } from '../../BlueComponents';
 import Lnurl from '../../class/lnurl';
+import presentAlert from '../../components/Alert';
+import AmountInput from '../../components/AmountInput';
+import Button from '../../components/Button';
+import SafeArea from '../../components/SafeArea';
+import { useTheme } from '../../components/themes';
+import prompt from '../../helpers/prompt';
+import { useBiometrics, unlockWithBiometrics } from '../../hooks/useBiometrics';
+import loc, { formatBalance, formatBalanceWithoutSuffix } from '../../loc';
 import { BitcoinUnit, Chain } from '../../models/bitcoinUnits';
-import loc, { formatBalanceWithoutSuffix, formatBalance } from '../../loc';
-import Biometric from '../../class/biometrics';
-import { BlueStorageContext } from '../../blue_modules/storage-context';
-import alert from '../../components/Alert';
-const prompt = require('../../blue_modules/prompt');
-const currency = require('../../blue_modules/currency');
+import { useStorage } from '../../hooks/context/useStorage';
+import { useExtendedNavigation } from '../../hooks/useExtendedNavigation';
+
+/**
+ * if user has default currency - fiat, attempting to pay will trigger conversion from entered in input field fiat value
+ * to satoshi, and attempt to pay this satoshi value, which might be a little bit off from `min` & `max` values
+ * provided by LnUrl. thats why we cache initial precise conversion rate so the reverse conversion wont be off.
+ */
+const _cacheFiatToSat = {};
 
 const LnurlPay = () => {
-  const { wallets } = useContext(BlueStorageContext);
+  const { wallets } = useStorage();
+  const { isBiometricUseCapableAndEnabled } = useBiometrics();
   const { walletID, lnurl } = useRoute().params;
+  /** @type {LightningCustodianWallet} */
   const wallet = wallets.find(w => w.getID() === walletID);
   const [unit, setUnit] = useState(wallet.getPreferredBalanceUnit());
   const [isLoading, setIsLoading] = useState(true);
-  const [LN, setLN] = useState();
+  const [_LN, setLN] = useState();
   const [payButtonDisabled, setPayButtonDisabled] = useState(true);
   const [payload, setPayload] = useState();
-  const { setParams, pop, navigate } = useNavigation();
+  const { setParams, pop, navigate } = useExtendedNavigation();
   const [amount, setAmount] = useState();
   const { colors } = useTheme();
   const stylesHook = StyleSheet.create({
@@ -59,7 +62,7 @@ const LnurlPay = () => {
       ln.callLnurlPayService()
         .then(setPayload)
         .catch(error => {
-          alert(error.message);
+          presentAlert({ message: error.message });
           pop();
         });
       setLN(ln);
@@ -73,31 +76,40 @@ const LnurlPay = () => {
 
   useEffect(() => {
     if (payload) {
-      let newAmount = payload.min;
+      /** @type {Lnurl} */
+      const LN = _LN;
+      let originalSatAmount;
+      let newAmount = (originalSatAmount = LN.getMin());
+      if (!newAmount) {
+        presentAlert({ message: 'Internal error: incorrect LNURL amount' });
+        return;
+      }
       switch (unit) {
         case BitcoinUnit.BTC:
-          newAmount = currency.satoshiToBTC(newAmount);
+          newAmount = satoshiToBTC(newAmount);
           break;
         case BitcoinUnit.LOCAL_CURRENCY:
-          newAmount = currency.satoshiToLocalCurrency(newAmount, false);
+          newAmount = satoshiToLocalCurrency(newAmount, false);
+          _cacheFiatToSat[newAmount] = originalSatAmount;
           break;
       }
       setAmount(newAmount);
     }
   }, [payload]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const onWalletSelect = wallet => {
-    setParams({ walletID: wallet.getID() });
+  const onWalletSelect = w => {
+    setParams({ walletID: w.getID() });
     pop();
   };
 
   const pay = async () => {
     setPayButtonDisabled(true);
     /** @type {Lnurl} */
+    const LN = _LN;
 
-    const isBiometricsEnabled = await Biometric.isBiometricUseCapableAndEnabled();
+    const isBiometricsEnabled = await isBiometricUseCapableAndEnabled();
     if (isBiometricsEnabled) {
-      if (!(await Biometric.unlockWithBiometrics())) {
+      if (!(await unlockWithBiometrics())) {
         return;
       }
     }
@@ -105,17 +117,19 @@ const LnurlPay = () => {
     let amountSats = amount;
     switch (unit) {
       case BitcoinUnit.SATS:
-        amountSats = parseInt(amountSats); // nop
+        amountSats = parseInt(amountSats, 10); // nop
         break;
       case BitcoinUnit.BTC:
-        amountSats = currency.btcToSatoshi(amountSats);
+        amountSats = btcToSatoshi(amountSats);
         break;
       case BitcoinUnit.LOCAL_CURRENCY:
-        amountSats = currency.btcToSatoshi(currency.fiatToBTC(amountSats));
+        if (_cacheFiatToSat[amount]) {
+          amountSats = _cacheFiatToSat[amount];
+        } else {
+          amountSats = btcToSatoshi(fiatToBTC(amountSats));
+        }
         break;
     }
-
-    /** @type {LightningCustodianWallet} */
 
     let bolt11payload;
     try {
@@ -130,7 +144,7 @@ const LnurlPay = () => {
       setPayButtonDisabled(false);
 
       // success, probably
-      ReactNativeHapticFeedback.trigger('notificationSuccess', { ignoreAndroidSystemSettings: false });
+      triggerHapticFeedback(HapticFeedbackTypes.NotificationSuccess);
       if (wallet.last_paid_invoice_result && wallet.last_paid_invoice_result.payment_preimage) {
         await LN.storeSuccess(decoded.payment_hash, wallet.last_paid_invoice_result.payment_preimage);
       }
@@ -143,12 +157,13 @@ const LnurlPay = () => {
           fromWalletID: walletID,
         },
       });
+      setIsLoading(false);
     } catch (Err) {
       console.log(Err.message);
       setIsLoading(false);
       setPayButtonDisabled(false);
-      ReactNativeHapticFeedback.trigger('notificationError', { ignoreAndroidSystemSettings: false });
-      return alert(Err.message);
+      triggerHapticFeedback(HapticFeedbackTypes.NotificationError);
+      return presentAlert({ message: Err.message });
     }
   };
 
@@ -182,7 +197,7 @@ const LnurlPay = () => {
 
   const renderGotPayload = () => {
     return (
-      <SafeBlueArea>
+      <SafeArea>
         <ScrollView contentContainertyle={{ justifyContent: 'space-around' }}>
           <BlueCard>
             <AmountInput
@@ -210,12 +225,12 @@ const LnurlPay = () => {
             <BlueText style={styles.alignSelfCenter}>{payload?.description}</BlueText>
             <BlueText style={styles.alignSelfCenter}>{payload?.domain}</BlueText>
             <BlueSpacing20 />
-            {payButtonDisabled ? <BlueLoading /> : <BlueButton title={loc.lnd.payButton} onPress={pay} />}
+            {payButtonDisabled ? <BlueLoading /> : <Button title={loc.lnd.payButton} onPress={pay} />}
             <BlueSpacing20 />
           </BlueCard>
         </ScrollView>
         {renderWalletSelectionButton}
-      </SafeBlueArea>
+      </SafeArea>
     );
   };
 
@@ -276,10 +291,4 @@ const styles = StyleSheet.create({
     textAlignVertical: 'bottom',
     marginTop: 2,
   },
-});
-
-LnurlPay.navigationOptions = navigationStyle({
-  title: '',
-  closeButton: true,
-  closeButtonFunc: ({ navigation }) => navigation.dangerouslyGetParent().popToTop(),
 });

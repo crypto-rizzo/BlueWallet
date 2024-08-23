@@ -3,12 +3,14 @@
 //  BlueWalletWatch Extension
 //
 //  Created by Marcos Rodriguez on 3/13/19.
-//  Copyright © 2019 Facebook. All rights reserved.
+
 //
 
 import Foundation
 
-class Transaction: NSObject, NSCoding {
+class Transaction: NSObject, NSSecureCoding {
+  static var supportsSecureCoding: Bool = true
+
   static let identifier: String = "Transaction"
   
   let time: String

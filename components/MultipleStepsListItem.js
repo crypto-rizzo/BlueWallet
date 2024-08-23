@@ -1,8 +1,11 @@
-import React from 'react';
-import { useTheme } from '@react-navigation/native';
-import { View, StyleSheet, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import PropTypes from 'prop-types';
-import { Icon } from 'react-native-elements';
+import React, { useRef } from 'react';
+import { ActivityIndicator, findNodeHandle, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Icon } from '@rneui/themed';
+
+import ActionSheet from '../screen/ActionSheet';
+import ActionSheetOptions from '../screen/ActionSheet.common';
+import { useTheme } from './themes';
 export const MultipleStepsListItemDashType = Object.freeze({ none: 0, top: 1, bottom: 2, topAndBottom: 3 });
 export const MultipleStepsListItemButtohType = Object.freeze({ partial: 0, full: 1 });
 
@@ -14,37 +17,11 @@ const MultipleStepsListItem = props => {
     circledText = '',
     leftText = '',
     checked = false,
+    useActionSheet = false,
+    actionSheetOptions = null, // Default to null or appropriate default
   } = props;
   const stylesHook = StyleSheet.create({
-    root: {
-      flex: 1,
-      backgroundColor: colors.elevated,
-    },
-    textBtc: {
-      color: colors.buttonAlternativeTextColor,
-    },
-    textDestinationFirstFour: {
-      color: colors.buttonAlternativeTextColor,
-    },
-    textBtcUnitValue: {
-      color: colors.buttonAlternativeTextColor,
-    },
-    textDestination: {
-      color: colors.foregroundColor,
-    },
-    modalContentShort: {
-      backgroundColor: colors.elevated,
-    },
-    modalContent: {
-      backgroundColor: colors.elevated,
-    },
-    textFiat: {
-      color: colors.alternativeTextColor,
-    },
     provideKeyButton: {
-      backgroundColor: colors.buttonDisabledBackgroundColor,
-    },
-    exportButton: {
       backgroundColor: colors.buttonDisabledBackgroundColor,
     },
     provideKeyButtonText: {
@@ -56,19 +33,36 @@ const MultipleStepsListItem = props => {
     vaultKeyText: {
       color: colors.alternativeTextColor,
     },
-    feeFiatText: {
-      color: colors.alternativeTextColor,
-    },
     vaultKeyCircleSuccess: {
       backgroundColor: colors.msSuccessBG,
-    },
-    vaultKeyTextSigned: {
-      color: colors.msSuccessBG,
     },
     rowPartialLeftText: {
       color: colors.alternativeTextColor,
     },
   });
+  const selfRef = useRef(null); // Create a ref for the component itself
+
+  const handleOnPressForActionSheet = () => {
+    if (useActionSheet && actionSheetOptions) {
+      // Clone options to modify them
+      let modifiedOptions = { ...actionSheetOptions };
+
+      // Use 'selfRef' if the component uses its own ref, or 'ref' if it's using forwarded ref
+      const anchor = findNodeHandle(selfRef.current);
+
+      if (anchor) {
+        // Attach the anchor only if it exists
+        modifiedOptions = { ...modifiedOptions, anchor };
+      }
+
+      ActionSheet.showActionSheetWithOptions(modifiedOptions, buttonIndex => {
+        // Call the original onPress function, if provided, and not cancelled
+        if (buttonIndex !== -1 && props.button.onPress) {
+          props.button.onPress(buttonIndex);
+        }
+      });
+    }
+  };
 
   const renderDashes = () => {
     switch (dashes) {
@@ -139,10 +133,12 @@ const MultipleStepsListItem = props => {
             {props.button.buttonType === undefined ||
               (props.button.buttonType === MultipleStepsListItemButtohType.full && (
                 <TouchableOpacity
+                  ref={useActionSheet ? selfRef : null}
+                  testID={props.button.testID}
                   accessibilityRole="button"
                   disabled={props.button.disabled}
                   style={[styles.provideKeyButton, stylesHook.provideKeyButton, buttonOpacity]}
-                  onPress={props.button.onPress}
+                  onPress={useActionSheet ? handleOnPressForActionSheet : props.button.onPress}
                 >
                   <Text style={[styles.provideKeyButtonText, stylesHook.provideKeyButtonText]}>{props.button.text}</Text>
                 </TouchableOpacity>
@@ -153,6 +149,7 @@ const MultipleStepsListItem = props => {
                   {props.button.leftText}
                 </Text>
                 <TouchableOpacity
+                  testID={props.button.testID}
                   accessibilityRole="button"
                   disabled={props.button.disabled}
                   style={[styles.rowPartialRightButton, stylesHook.provideKeyButton, rightButtonOpacity]}
@@ -167,7 +164,7 @@ const MultipleStepsListItem = props => {
           </>
         )}
         {!showActivityIndicator && props.rightButton && checked && (
-          <View style={styles.rightButtonContainer} accessibilityComponentType>
+          <View style={styles.rightButtonContainer}>
             <TouchableOpacity
               accessibilityRole="button"
               disabled={props.rightButton.disabled}
@@ -188,6 +185,8 @@ MultipleStepsListItem.propTypes = {
   checked: PropTypes.bool,
   leftText: PropTypes.string,
   showActivityIndicator: PropTypes.bool,
+  useActionSheet: PropTypes.bool,
+  actionSheetOptions: PropTypes.shape(ActionSheetOptions),
   dashes: PropTypes.number,
   button: PropTypes.shape({
     text: PropTypes.string,
@@ -258,15 +257,6 @@ const styles = StyleSheet.create({
     alignContent: 'center',
     justifyContent: 'center',
   },
-  grayButton: {
-    marginTop: 24,
-    marginLeft: 40,
-    height: 48,
-    borderRadius: 8,
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
   activityIndicator: {
     marginLeft: 40,
   },
@@ -280,15 +270,6 @@ const styles = StyleSheet.create({
   },
   rowPartialLeftText: {
     textAlign: 'center',
-  },
-  vaultKeyTextSignedWrapper: { justifyContent: 'center', alignItems: 'center', paddingLeft: 16 },
-  vaultKeyTextSigned: { fontSize: 18, fontWeight: 'bold' },
-  exportButton: {
-    height: 48,
-    borderRadius: 8,
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 16,
   },
 });
 

@@ -1,20 +1,24 @@
-import React, { useContext, useEffect, useState, useRef, useMemo } from 'react';
-import { FlatList, StatusBar, StyleSheet, TextInput, View } from 'react-native';
-import { useNavigation, useRoute, useTheme } from '@react-navigation/native';
-
-import { BlueButton, BlueFormLabel, BlueSpacing20, BlueTextCentered, SafeBlueArea } from '../../BlueComponents';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { FlatList, StyleSheet, TextInput, View } from 'react-native';
+import debounce from '../../blue_modules/debounce';
+import { BlueFormLabel, BlueSpacing20, BlueTextCentered } from '../../BlueComponents';
+import { HDLegacyP2PKHWallet, HDSegwitBech32Wallet, HDSegwitP2SHWallet } from '../../class';
+import { validateBip32 } from '../../class/wallet-import';
+import Button from '../../components/Button';
 import navigationStyle from '../../components/navigationStyle';
+import SafeArea from '../../components/SafeArea';
+import { useTheme } from '../../components/themes';
 import WalletToImport from '../../components/WalletToImport';
 import loc from '../../loc';
-import { BlueStorageContext } from '../../blue_modules/storage-context';
-import { HDLegacyP2PKHWallet, HDSegwitP2SHWallet, HDSegwitBech32Wallet } from '../../class';
-import { validateBip32 } from '../../class/wallet-import';
-import debounce from '../../blue_modules/debounce';
+import { useStorage } from '../../hooks/context/useStorage';
 
 const WRONG_PATH = 'WRONG_PATH';
 const WALLET_FOUND = 'WALLET_FOUND';
 const WALLET_NOTFOUND = 'WALLET_NOTFOUND';
 const WALLET_UNKNOWN = 'WALLET_UNKNOWN';
+
+const ListEmptyComponent = () => <BlueTextCentered>{loc.wallets.import_wrong_path}</BlueTextCentered>;
 
 const ImportCustomDerivationPath = () => {
   const navigation = useNavigation();
@@ -22,7 +26,7 @@ const ImportCustomDerivationPath = () => {
   const route = useRoute();
   const importText = route.params.importText;
   const password = route.params.password;
-  const { addAndSaveWallet } = useContext(BlueStorageContext);
+  const { addAndSaveWallet } = useStorage();
   const [path, setPath] = useState("m/84'/0'/0'");
   const [wallets, setWallets] = useState({});
   const [used, setUsed] = useState({});
@@ -30,32 +34,32 @@ const ImportCustomDerivationPath = () => {
   const importing = useRef(false);
 
   const debouncedSavePath = useRef(
-    debounce(async path => {
-      if (!validateBip32(path)) {
-        setWallets(ws => ({ ...ws, [path]: WRONG_PATH }));
+    debounce(async newPath => {
+      if (!validateBip32(newPath)) {
+        setWallets(ws => ({ ...ws, [newPath]: WRONG_PATH }));
         return;
       }
 
       // create wallets
-      const wallets = {};
+      const newWallets = {};
       for (const Wallet of [HDLegacyP2PKHWallet, HDSegwitP2SHWallet, HDSegwitBech32Wallet]) {
         const wallet = new Wallet();
         wallet.setSecret(importText);
         wallet.setPassphrase(password);
-        wallet.setDerivationPath(path);
-        wallets[Wallet.type] = wallet;
+        wallet.setDerivationPath(newPath);
+        newWallets[Wallet.type] = wallet;
       }
-      setWallets(ws => ({ ...ws, [path]: wallets }));
+      setWallets(ws => ({ ...ws, [newPath]: newWallets }));
 
       // discover was they ever used
       const res = {};
-      const promises = Object.values(wallets).map(w => w.wasEverUsed().then(v => (res[w.type] = v ? WALLET_FOUND : WALLET_NOTFOUND)));
+      const promises = Object.values(newWallets).map(w => w.wasEverUsed().then(v => (res[w.type] = v ? WALLET_FOUND : WALLET_NOTFOUND)));
       try {
         await Promise.all(promises); // wait for all promises to be resolved
       } catch (e) {
-        Object.values(wallets).forEach(w => (res[w.type] = WALLET_UNKNOWN));
+        Object.values(newWallets).forEach(w => (res[w.type] = WALLET_UNKNOWN));
       }
-      setUsed(u => ({ ...u, [path]: res }));
+      setUsed(u => ({ ...u, [newPath]: res }));
     }, 500),
   );
   useEffect(() => {
@@ -91,7 +95,7 @@ const ImportCustomDerivationPath = () => {
     importing.current = true;
     const wallet = wallets[path][type];
     addAndSaveWallet(wallet);
-    navigation.dangerouslyGetParent().pop();
+    navigation.getParent().pop();
   };
 
   const renderItem = ({ item }) => {
@@ -115,8 +119,7 @@ const ImportCustomDerivationPath = () => {
   };
 
   return (
-    <SafeBlueArea style={[styles.root, stylesHook.root]}>
-      <StatusBar barStyle="light-content" />
+    <SafeArea style={[styles.root, stylesHook.root]}>
       <BlueSpacing20 />
       <BlueFormLabel>{loc.wallets.import_derivation_subtitle}</BlueFormLabel>
       <BlueSpacing20 />
@@ -133,12 +136,12 @@ const ImportCustomDerivationPath = () => {
         keyExtractor={w => path + w[0]}
         renderItem={renderItem}
         contentContainerStyle={styles.flatListContainer}
-        ListEmptyComponent={() => <BlueTextCentered>{loc.wallets.import_wrong_path}</BlueTextCentered>}
+        ListEmptyComponent={ListEmptyComponent}
       />
 
       <View style={[styles.center, stylesHook.center]}>
         <View style={styles.buttonContainer}>
-          <BlueButton
+          <Button
             disabled={wallets[path]?.[selected] === undefined}
             title={loc.wallets.import_do_import}
             testID="ImportButton"
@@ -146,7 +149,7 @@ const ImportCustomDerivationPath = () => {
           />
         </View>
       </View>
-    </SafeBlueArea>
+    </SafeArea>
   );
 };
 
@@ -157,12 +160,10 @@ const styles = StyleSheet.create({
   flatListContainer: {
     marginHorizontal: 16,
   },
-  listContainer: {
-    minHeight: 100,
-  },
   center: {
     marginHorizontal: 16,
     alignItems: 'center',
+    top: -100,
   },
   buttonContainer: {
     height: 45,
@@ -182,6 +183,10 @@ const styles = StyleSheet.create({
   },
 });
 
-ImportCustomDerivationPath.navigationOptions = navigationStyle({}, opts => ({ ...opts, title: loc.wallets.import_derivation_title }));
+ImportCustomDerivationPath.navigationOptions = navigationStyle({}, opts => ({
+  ...opts,
+  title: loc.wallets.import_derivation_title,
+  statusBarStyle: 'light',
+}));
 
 export default ImportCustomDerivationPath;

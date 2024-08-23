@@ -1,29 +1,21 @@
 import React, { Component } from 'react';
-import PropTypes from 'prop-types';
-import {
-  ActivityIndicator,
-  Platform,
-  View,
-  TextInput,
-  TouchableOpacity,
-  Linking,
-  ScrollView,
-  StyleSheet,
-  KeyboardAvoidingView,
-} from 'react-native';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
-import { Text } from 'react-native-elements';
-import ReactNativeHapticFeedback from 'react-native-haptic-feedback';
-
-import { BlueButton, BlueCard, BlueReplaceFeeSuggestions, BlueSpacing, BlueSpacing20, BlueText, SafeBlueArea } from '../../BlueComponents';
-import navigationStyle from '../../components/navigationStyle';
-import { BlueCurrentTheme } from '../../components/themes';
-import { HDSegwitBech32Transaction, HDSegwitBech32Wallet } from '../../class';
-import loc from '../../loc';
-import { BlueStorageContext } from '../../blue_modules/storage-context';
+import PropTypes from 'prop-types';
+import { Text } from '@rneui/themed';
+import * as BlueElectrum from '../../blue_modules/BlueElectrum';
+import triggerHapticFeedback, { HapticFeedbackTypes } from '../../blue_modules/hapticFeedback';
 import Notifications from '../../blue_modules/notifications';
-import alert from '../../components/Alert';
-const BlueElectrum = require('../../blue_modules/BlueElectrum');
+import { BlueCard, BlueSpacing, BlueSpacing20, BlueText } from '../../BlueComponents';
+import { HDSegwitBech32Transaction, HDSegwitBech32Wallet } from '../../class';
+import presentAlert, { AlertType } from '../../components/Alert';
+import Button from '../../components/Button';
+import SafeArea from '../../components/SafeArea';
+import { BlueCurrentTheme } from '../../components/themes';
+import loc from '../../loc';
+import { StorageContext } from '../../components/Context/StorageProvider';
+import { popToTop } from '../../NavigationService';
+import ReplaceFeeSuggestions from '../../components/ReplaceFeeSuggestions';
 
 const styles = StyleSheet.create({
   root: {
@@ -62,24 +54,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     alignSelf: 'center',
   },
-  doneWrap: {
-    flex: 1,
-    paddingTop: 19,
-  },
-  doneCard: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingTop: 76,
-    paddingBottom: 16,
-  },
-  blueBigCheckmark: {
-    marginTop: 43,
-    marginBottom: 53,
-  },
 });
 
 export default class CPFP extends Component {
-  static contextType = BlueStorageContext;
+  static contextType = StorageContext;
   constructor(props) {
     super(props);
     let txid;
@@ -105,14 +83,14 @@ export default class CPFP extends Component {
         if (result) {
           this.onSuccessBroadcast();
         } else {
-          ReactNativeHapticFeedback.trigger('notificationError', { ignoreAndroidSystemSettings: false });
+          triggerHapticFeedback(HapticFeedbackTypes.NotificationError);
           this.setState({ isLoading: false });
-          alert(loc.errors.broadcast);
+          presentAlert({ message: loc.errors.broadcast });
         }
       } catch (error) {
-        ReactNativeHapticFeedback.trigger('notificationError', { ignoreAndroidSystemSettings: false });
+        triggerHapticFeedback(HapticFeedbackTypes.NotificationError);
         this.setState({ isLoading: false });
-        alert(error.message);
+        presentAlert({ message: error.message, type: AlertType.Toast });
       }
     });
   };
@@ -121,7 +99,7 @@ export default class CPFP extends Component {
     this.context.txMetadata[this.state.newTxid] = { memo: 'Child pays for parent (CPFP)' };
     Notifications.majorTomToGroundControl([], [], [this.state.newTxid]);
     this.context.sleep(4000).then(() => this.context.fetchAndSaveWalletTransactions(this.state.wallet.getID()));
-    this.props.navigation.navigate('Success', { onDonePressed: () => this.props.navigation.popToTop(), amount: undefined });
+    this.props.navigation.navigate('Success', { onDonePressed: () => popToTop(), amount: undefined });
   }
 
   async componentDidMount() {
@@ -155,7 +133,7 @@ export default class CPFP extends Component {
   }
 
   async createTransaction() {
-    const newFeeRate = parseInt(this.state.newFeeRate);
+    const newFeeRate = parseInt(this.state.newFeeRate, 10);
     if (newFeeRate > this.state.feeRate) {
       /** @type {HDSegwitBech32Transaction} */
       const tx = this.state.tx;
@@ -166,29 +144,27 @@ export default class CPFP extends Component {
         this.setState({ isLoading: false });
       } catch (_) {
         this.setState({ isLoading: false });
-        alert(loc.errors.error + ': ' + _.message);
+        presentAlert({ message: loc.errors.error + ': ' + _.message });
       }
     }
   }
 
   renderStage1(text) {
     return (
-      <KeyboardAvoidingView enabled={!Platform.isPad} behavior="position">
-        <SafeBlueArea style={styles.root}>
+      <SafeArea style={styles.root}>
+        <BlueSpacing />
+        <BlueCard style={styles.center}>
+          <BlueText>{text}</BlueText>
+          <BlueSpacing20 />
+          <ReplaceFeeSuggestions onFeeSelected={fee => this.setState({ newFeeRate: fee })} transactionMinimum={this.state.feeRate} />
           <BlueSpacing />
-          <BlueCard style={styles.center}>
-            <BlueText>{text}</BlueText>
-            <BlueSpacing20 />
-            <BlueReplaceFeeSuggestions onFeeSelected={fee => this.setState({ newFeeRate: fee })} transactionMinimum={this.state.feeRate} />
-            <BlueSpacing />
-            <BlueButton
-              disabled={this.state.newFeeRate <= this.state.feeRate}
-              onPress={() => this.createTransaction()}
-              title={loc.transactions.cpfp_create}
-            />
-          </BlueCard>
-        </SafeBlueArea>
-      </KeyboardAvoidingView>
+          <Button
+            disabled={this.state.newFeeRate <= this.state.feeRate}
+            onPress={() => this.createTransaction()}
+            title={loc.transactions.cpfp_create}
+          />
+        </BlueCard>
+      </SafeArea>
     );
   }
 
@@ -209,7 +185,7 @@ export default class CPFP extends Component {
           >
             <Text style={styles.actionText}>{loc.send.create_verify}</Text>
           </TouchableOpacity>
-          <BlueButton disabled={this.context.isElectrumDisabled} onPress={this.broadcast} title={loc.send.confirm_sendNow} />
+          <Button disabled={this.context.isElectrumDisabled} onPress={this.broadcast} title={loc.send.confirm_sendNow} />
         </BlueCard>
       </View>
     );
@@ -230,7 +206,7 @@ export default class CPFP extends Component {
 
     if (this.state.nonReplaceable) {
       return (
-        <SafeBlueArea style={styles.root}>
+        <SafeArea style={styles.root}>
           <BlueSpacing20 />
           <BlueSpacing20 />
           <BlueSpacing20 />
@@ -238,14 +214,14 @@ export default class CPFP extends Component {
           <BlueSpacing20 />
 
           <BlueText h4>{loc.transactions.cpfp_no_bump}</BlueText>
-        </SafeBlueArea>
+        </SafeArea>
       );
     }
 
     return (
-      <SafeBlueArea style={styles.explain}>
+      <SafeArea style={styles.explain}>
         <ScrollView>{this.renderStage1(loc.transactions.cpfp_exp)}</ScrollView>
-      </SafeBlueArea>
+      </SafeArea>
     );
   }
 }
@@ -262,4 +238,3 @@ CPFP.propTypes = {
     }),
   }),
 };
-CPFP.navigationOptions = navigationStyle({}, opts => ({ ...opts, title: loc.transactions.cpfp_title }));

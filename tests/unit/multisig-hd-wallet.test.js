@@ -1,9 +1,10 @@
 import assert from 'assert';
+import * as bitcoin from 'bitcoinjs-lib';
+
+import Base43 from '../../blue_modules/base43';
+import { BlueURDecoder, decodeUR, encodeUR } from '../../blue_modules/ur';
 import { MultisigHDWallet } from '../../class/';
-import { decodeUR, encodeUR } from '../../blue_modules/ur';
 import { MultisigCosigner } from '../../class/multisig-cosigner';
-const bitcoin = require('bitcoinjs-lib');
-const Base43 = require('../../blue_modules/base43');
 
 const fp1cobo = 'D37EAD88';
 const Zpub1 = 'Zpub74ijpfhERJNjhCKXRspTdLJV5eoEmSRZdHqDvp9kVtdVEyiXk7pXxRbfZzQvsDFpfDHEHVtVpx4Dz9DGUWGn2Xk5zG5u45QTMsYS2vjohNQ';
@@ -68,10 +69,8 @@ describe('multisig-wallet (p2sh)', () => {
         height: 666,
         value: 100000,
         address: '3J5xQcgBqoykSHhmDJLYp87SgVSNhYrvnz',
-        txId: '630a227c0b4ca30bc98689d40d31e0407fcc5d61730ce1fa548b26630efddeec',
         vout: 0,
         txid: '630a227c0b4ca30bc98689d40d31e0407fcc5d61730ce1fa548b26630efddeec',
-        amount: 100000,
         wif: false,
         confirmations: 666,
         script: { length: 107 }, // incorrect value so old tests pass. in reality its calculated on the fly
@@ -161,10 +160,8 @@ describe('multisig-wallet (p2sh)', () => {
         height: 666,
         value: 100000,
         address: '3J5xQcgBqoykSHhmDJLYp87SgVSNhYrvnz',
-        txId: '630a227c0b4ca30bc98689d40d31e0407fcc5d61730ce1fa548b26630efddeec',
         vout: 0,
         txid: '630a227c0b4ca30bc98689d40d31e0407fcc5d61730ce1fa548b26630efddeec',
-        amount: 100000,
         wif: false,
         confirmations: 666,
         script: { length: 107 }, // incorrect value so old tests pass. in reality its calculated on the fly
@@ -242,10 +239,8 @@ describe('multisig-wallet (p2sh)', () => {
         height: 666,
         value: 87740,
         address: '3PmqRLiPnBXhdYGN6mAHChXLPvw8wb3Yt8',
-        txId: '33eaa5193c71519deb968852c9938824d14504a785479a051ea07cc68400ee23',
         vout: 1,
         txid: '33eaa5193c71519deb968852c9938824d14504a785479a051ea07cc68400ee23',
-        amount: 87740,
         wif: false,
         confirmations: 666,
         script: { length: 107 }, // incorrect value so old tests pass. in reality its calculated on the fly
@@ -310,10 +305,8 @@ describe('multisig-wallet (p2sh)', () => {
         height: 666,
         value: 87740,
         address: '3PmqRLiPnBXhdYGN6mAHChXLPvw8wb3Yt8',
-        txId: '33eaa5193c71519deb968852c9938824d14504a785479a051ea07cc68400ee23',
         vout: 1,
         txid: '33eaa5193c71519deb968852c9938824d14504a785479a051ea07cc68400ee23',
-        amount: 87740,
         wif: false,
         confirmations: 666,
         txhex:
@@ -392,10 +385,8 @@ describe('multisig-wallet (wrapped segwit)', () => {
         height: 666,
         value: 100000,
         address: '38xA38nfy649CC2JjjZj1CYAhtrcRc67dk',
-        txId: 'e36f630517f5b094a9287e73bdb443792088255c50d74414c7f25bd7fbdcf18e',
         vout: 0,
         txid: 'e36f630517f5b094a9287e73bdb443792088255c50d74414c7f25bd7fbdcf18e',
-        amount: 100000,
         wif: false,
         confirmations: 666,
         script: { length: 107 }, // incorrect value so old tests pass. in reality its calculated on the fly
@@ -460,10 +451,8 @@ describe('multisig-wallet (wrapped segwit)', () => {
         height: 666,
         value: 100000,
         address: '38xA38nfy649CC2JjjZj1CYAhtrcRc67dk',
-        txId: 'e36f630517f5b094a9287e73bdb443792088255c50d74414c7f25bd7fbdcf18e',
         vout: 0,
         txid: 'e36f630517f5b094a9287e73bdb443792088255c50d74414c7f25bd7fbdcf18e',
-        amount: 100000,
         wif: false,
         script: { length: 107 }, // incorrect value so old tests pass. in reality its calculated on the fly
         confirmations: 666,
@@ -536,10 +525,8 @@ describe('multisig-wallet (wrapped segwit)', () => {
         height: 666,
         value: 87740,
         address: '3PU8J9pdiKAMsLnrhyrG7RZ4LZiTURQp5r',
-        txId: '31d614bc1d6fcbcb273f585f87d2e619784920f8cb0c2396e4a03f1bb86fed64',
         vout: 1,
         txid: '31d614bc1d6fcbcb273f585f87d2e619784920f8cb0c2396e4a03f1bb86fed64',
-        amount: 87740,
         wif: false,
         script: { length: 107 }, // incorrect value so old tests pass. in reality its calculated on the fly
         confirmations: 666,
@@ -822,10 +809,8 @@ describe('multisig-wallet (native segwit)', () => {
         height: 666,
         value: 100000,
         address: 'bc1qxzrzh4caw7e3genwtldtxntzj0ktfl7mhf2lh4fj8h7hnkvtvc4salvp85',
-        txId: '666b1f2ee25dfd92377bb66a8db2badf45625a59e93f5a89836e178f9f5ed396',
         vout: 0,
         txid: '666b1f2ee25dfd92377bb66a8db2badf45625a59e93f5a89836e178f9f5ed396',
-        amount: 100000,
         wif: false,
         script: { length: 107 }, // incorrect value so old tests pass. in reality its calculated on the fly
         confirmations: 0,
@@ -974,10 +959,8 @@ describe('multisig-wallet (native segwit)', () => {
         height: 666,
         value: 100000,
         address: 'bc1qxzrzh4caw7e3genwtldtxntzj0ktfl7mhf2lh4fj8h7hnkvtvc4salvp85',
-        txId: '666b1f2ee25dfd92377bb66a8db2badf45625a59e93f5a89836e178f9f5ed396',
         vout: 0,
         txid: '666b1f2ee25dfd92377bb66a8db2badf45625a59e93f5a89836e178f9f5ed396',
-        amount: 100000,
         wif: false,
         script: { length: 107 }, // incorrect value so old tests pass. in reality its calculated on the fly
         confirmations: 0,
@@ -1046,10 +1029,8 @@ describe('multisig-wallet (native segwit)', () => {
         height: 666,
         value: 100000,
         address: 'bc1qxzrzh4caw7e3genwtldtxntzj0ktfl7mhf2lh4fj8h7hnkvtvc4salvp85',
-        txId: '666b1f2ee25dfd92377bb66a8db2badf45625a59e93f5a89836e178f9f5ed396',
         vout: 0,
         txid: '666b1f2ee25dfd92377bb66a8db2badf45625a59e93f5a89836e178f9f5ed396',
-        amount: 100000,
         wif: false,
         confirmations: 0,
         script: { length: 107 }, // incorrect value so old tests pass. in reality its calculated on the fly
@@ -1256,10 +1237,8 @@ describe('multisig-wallet (native segwit)', () => {
         height: 666,
         value: 100000,
         address: 'bc1qxzrzh4caw7e3genwtldtxntzj0ktfl7mhf2lh4fj8h7hnkvtvc4salvp85',
-        txId: '666b1f2ee25dfd92377bb66a8db2badf45625a59e93f5a89836e178f9f5ed396',
         vout: 0,
         txid: '666b1f2ee25dfd92377bb66a8db2badf45625a59e93f5a89836e178f9f5ed396',
-        amount: 100000,
         wif: false,
         confirmations: 0,
         txhex:
@@ -1304,8 +1283,31 @@ describe('multisig-wallet (native segwit)', () => {
     assert.strictEqual(w.getLabel(), w2.getLabel());
   });
 
+  it('can parse p2sh colcard format from caravan', () => {
+    const cc =
+      '# Coldcard Multisig setup file (exported from unchained-wallets)\n' +
+      '# https://github.com/unchained-capital/unchained-wallets\n' +
+      '# v1.0.0\n' +
+      '#\n' +
+      'Name: yIm388Ib_x3g6ruuY\n' +
+      'Policy: 2 of 3\n' +
+      'Format: P2SH\n' +
+      '\n' +
+      'Derivation: m/0/0/0/0\n' +
+      '0dfd4a3b: xpub6EDykLBC5EbV78g9QiFKZtsPnesv2m4Xtbvzi8FjwzGmBJbKVGRUDKcnpf9QyFQrv3vh6C9N92rKaqURHmhhs8EigCTZY7qAsFDGg4QeaU7\n' +
+      "Derivation: m/45'/0/0/0\n" +
+      '8887a204: xpub6Dma5xev7J5QJuVQ7tGRWGY56FNkt9qX5gCdFQe8fHp4DmtBuxUpxGMo1oBhKYi7fYxqHa2UpPR87Xdc6i7AeZt3tdFRykiqnRk7vKyDcbY\n' +
+      "Derivation: m/45'/0/0/0\n" +
+      '77c5100e: xpub6DqutttHLMzHBHk6LFJnVkv2EydG6LqN5GAFLFyCFix446y8iMqvavic9zTvgS3kynpD5ycLNKiaKx9c96qvL5VXHqfNZEuGJstJ5tpFfwL\n';
+
+    const w = new MultisigHDWallet();
+    w.setSecret(cc);
+
+    assert.strictEqual(w._getExternalAddressByIndex(0), '3KEDMaBiSEmqvkjHgsFZt73MsArxK2LKKq');
+  });
+
   it('can import incomplete wallet from Coldcard', async () => {
-    const Zpub2 = 'Zpub75mAE8EjyxSzoyPmGnd5E6MyD7ALGNndruWv52xpzimZQKukwvEfXTHqmH8nbbc6ccP5t2aM3mws3pKYSnKpKMMytdbNEZFUxKzztYFM8Pn';
+    const Zpub = 'Zpub75mAE8EjyxSzoyPmGnd5E6MyD7ALGNndruWv52xpzimZQKukwvEfXTHqmH8nbbc6ccP5t2aM3mws3pKYSnKpKMMytdbNEZFUxKzztYFM8Pn';
 
     const w = new MultisigHDWallet();
     w.setSecret(coldcardExport);
@@ -1315,8 +1317,8 @@ describe('multisig-wallet (native segwit)', () => {
 
     assert.strictEqual(w.getM(), 0); // zero means unknown
     assert.strictEqual(w.getN(), 1); // added only one cosigner
-    assert.strictEqual(w.getCosigner(1), Zpub2);
-    assert.strictEqual(w.getCosignerForFingerprint(fp2coldcard), Zpub2);
+    assert.strictEqual(w.getCosigner(1), Zpub);
+    assert.strictEqual(w.getCosignerForFingerprint(fp2coldcard), Zpub);
     assert.strictEqual(w.getDerivationPath(), ''); // unknown
   });
 
@@ -1393,10 +1395,8 @@ describe('multisig-wallet (native segwit)', () => {
           height: 666,
           value: 100000,
           address: 'bc1q2mkhkvx9l7aqksvyf0dwd2x4yn8qx2w3sythjltdkjw70r8hsves2evfg6',
-          txId: 'c097161e8ae3b12ae2c90da95ade1185e368269a861ea9a8da023714d6fea31e',
           vout: 0,
           txid: 'c097161e8ae3b12ae2c90da95ade1185e368269a861ea9a8da023714d6fea31e',
-          amount: 100000,
           wif: false,
           script: { length: 107 }, // incorrect value so old tests pass. in reality its calculated on the fly
           confirmations: 666,
@@ -1415,6 +1415,57 @@ describe('multisig-wallet (native segwit)', () => {
       assert.ok(psbt);
       assert.ok(!tx);
     }
+  });
+
+  it('can import electrum json file format with seeds and passphrase', () => {
+    const json = require('./fixtures/electrum-multisig-wallet-with-seed-and-passphrase.json');
+    const w = new MultisigHDWallet();
+    w.setSecret(JSON.stringify(json));
+
+    assert.strictEqual(w.getM(), 2);
+    assert.strictEqual(w.getN(), 2);
+
+    assert.strictEqual(w._getExternalAddressByIndex(0), 'bc1qmpyrvv6fmkv494r9qk9nllyuyngtqj62fywcl2xzessgwf9qgrssxff69u');
+    assert.strictEqual(w._getExternalAddressByIndex(1), 'bc1q7n8twph2zlfw6w0p5ms9vkvj9klxqhpjy5mv5tnqpcf2pl3d3qrst2pjz7');
+    assert.strictEqual(w._getInternalAddressByIndex(0), 'bc1q2ltyvkrs0uay39acfk4y0gmw7flghd3403p94x26tc8579t9adwsjp83yz');
+    assert.strictEqual(w._getInternalAddressByIndex(1), 'bc1q24rc4v9r6fjtkrwfp4j57ufef56ez46rrpyjtdkhjpr687f5de0sa7ryv5');
+
+    assert.ok(w.isNativeSegwit());
+    assert.ok(!w.isWrappedSegwit());
+    assert.ok(!w.isLegacy());
+
+    assert.strictEqual(w.getCustomDerivationPathForCosigner(1), "m/1'");
+    assert.strictEqual(w.getCustomDerivationPathForCosigner(2), "m/48'/0'/0'/2'");
+
+    assert.strictEqual(w.getFingerprint(1), '8de7b2c3'.toUpperCase());
+    assert.strictEqual(w.getFingerprint(2), '84431270'.toUpperCase());
+
+    const utxos = [
+      {
+        address: 'bc1qmpyrvv6fmkv494r9qk9nllyuyngtqj62fywcl2xzessgwf9qgrssxff69u',
+        height: 0,
+        txhex:
+          '02000000000101d7bf498a92b19bab8a58260efedd7e6cd3b7713ff1e9d2603ff9f06a64f66291000000001716001440512e04b685a0cd66a03bea0896c27000c828dcffffffff01430b010000000000220020d848363349dd9952d465058b3ffc9c24d0b04b4a491d8fa8c2cc208724a040e10247304402201ad742ffee74e5ae4b3867d9818b8ad6505ca5239280138f9da3f93e4c27ee0802202918fa6034485077596bf64501ae6954371e91d250ee98f5a3c5889d4dee923e012103a681da832358050bd9b197aaa55d921f1447025b999eadb018aa67c5b8f64a0900000000',
+        txid: '2d40b967bb3a4ecd8517843d01042b0dd4227192acbe0e1ad1f1cf144a1ec0c9',
+        value: 68419,
+        vout: 0,
+        wif: false,
+      },
+    ];
+    const { psbt } = w.createTransaction(
+      utxos,
+      [{ address: '39RXMPjwKwoEGJeABJvdG1N4nQAzfEgcos' }],
+      1,
+      w._getInternalAddressByIndex(3),
+      false,
+      true,
+    );
+    assert.ok(psbt);
+    // we are using .cosignPsbt for now, because .createTransaction throws
+    // Need one bip32Derivation masterFingerprint to match the HDSigner fingerprint
+    // https://github.com/BlueWallet/BlueWallet/pull/2466
+    const { tx } = w.cosignPsbt(psbt);
+    assert.ok(tx);
   });
 
   it('cant import garbage', () => {
@@ -1668,14 +1719,12 @@ describe('multisig-wallet (native segwit)', () => {
     assert.strictEqual(w.getCosignerForFingerprint(fp2coldcard), process.env.MNEMONICS_COLDCARD);
     assert.strictEqual(w.howManySignaturesCanWeMake(), 1);
 
-    w.replaceCosigner(fp2coldcard, Zpub2, fp2coldcard, path); // <-------------------
-
+    w.replaceCosignerSeedWithXpub(2);
     assert.strictEqual(w.getCosigner(2), Zpub2);
     assert.strictEqual(w.getFingerprint(2), fp2coldcard);
     assert.strictEqual(w.getCustomDerivationPathForCosigner(2), path);
 
-    w.replaceCosigner(fp2coldcard, process.env.MNEMONICS_COLDCARD); // <---------------------------
-
+    w.replaceCosignerXpubWithSeed(2, process.env.MNEMONICS_COLDCARD);
     assert.strictEqual(w.getCosigner(2), process.env.MNEMONICS_COLDCARD);
     assert.strictEqual(w.getFingerprint(2), fp2coldcard);
     assert.strictEqual(w.getCustomDerivationPathForCosigner(2), path);
@@ -1704,6 +1753,49 @@ describe('multisig-wallet (native segwit)', () => {
     assert.ok(!w.getCustomDerivationPathForCosigner(2));
     assert.strictEqual(w.getN(), 1);
     assert.strictEqual(w.getM(), 2);
+
+    w.addCosigner(
+      'salon smoke bubble dolphin powder govern rival sport better arrest certain manual',
+      undefined,
+      undefined,
+      '9WDdFSZX4d6mPxkr',
+    );
+    assert.strictEqual(w.getN(), 2);
+
+    w.replaceCosignerSeedWithXpub(2);
+    assert.strictEqual(
+      w.getCosigner(2),
+      'Zpub752NRx3S4ax3S5oLHLB2DAQx9X3Ek4EGvtsyYTpzQ2VRdXB6DjL5ZKiHhcUqfZM6M2KCVB5vSXEQ4jMosHWuF4dD5pwowfzL4fmJz5FaJHh',
+    );
+    assert.strictEqual(w.getFingerprint(2), '2C0908B6');
+    assert.strictEqual(w.getCustomDerivationPathForCosigner(2), path);
+    assert.ok(!w.getCosignerPassphrase(2));
+
+    w.replaceCosignerXpubWithSeed(
+      2,
+      'salon smoke bubble dolphin powder govern rival sport better arrest certain manual',
+      '9WDdFSZX4d6mPxkr',
+    );
+    assert.strictEqual(w.getCosigner(2), 'salon smoke bubble dolphin powder govern rival sport better arrest certain manual');
+    assert.strictEqual(w.getFingerprint(2), '2C0908B6');
+    assert.strictEqual(w.getCustomDerivationPathForCosigner(2), path);
+    assert.strictEqual(w.getCosignerPassphrase(2), '9WDdFSZX4d6mPxkr');
+
+    // test that after deleting cosinger with passphrase, it has been cleaned out properly
+    w.deleteCosigner('2C0908B6');
+    assert.ok(!w.getCosigner(2));
+    assert.ok(!w.getFingerprint(2));
+    assert.ok(!w.getCustomDerivationPathForCosigner(2));
+    assert.ok(!w.getCosignerPassphrase(2));
+    assert.strictEqual(w.getN(), 1);
+    assert.strictEqual(w.getM(), 2);
+
+    // after chaning first cosigner, make sure that he changed, not the second one
+    w.replaceCosignerXpubWithSeed(1, process.env.MNEMONICS_COBO);
+    assert.strictEqual(w.getCosigner(1), process.env.MNEMONICS_COBO);
+    assert.strictEqual(w.getFingerprint(1), fp1cobo);
+    assert.strictEqual(w.getCustomDerivationPathForCosigner(1), path);
+    assert.strictEqual(w.getCosignerPassphrase(1), undefined);
   });
 
   it('can sign valid tx if we have more keys than quorum ("Too many signatures" error)', async () => {
@@ -1741,10 +1833,8 @@ describe('multisig-wallet (native segwit)', () => {
         height: 662352,
         value: 100000,
         address: 'bc1qlkh0zgq5ypcdfs9rdvrucra96c5gmjgaufm0au8cglkkrah29nesrkvewg',
-        txId: 'e112e3b109aff5fe76d4fde90bd3c2df58bfb250280a4404421fff42d6801fd2',
         vout: 0,
         txid: 'e112e3b109aff5fe76d4fde90bd3c2df58bfb250280a4404421fff42d6801fd2',
-        amount: 100000,
         wif: false,
         confirmations: 1,
         txhex:
@@ -1790,10 +1880,8 @@ describe('multisig-wallet (native segwit)', () => {
     const utxos = [
       {
         address: 'bc1qzwt595g0q0xauxzr4h56kw4zavfrnq3r4zkx42relm8rvwuuxyvsqndmgl',
-        amount: 2120,
         confirmations: 33,
         height: 668483,
-        txId: '43b2ac418539b61610c3ae2e216052d634b9b20fcece05940b5662fe5cf3f3b5',
         txhex:
           '020000000001019e590dee7124728b988e32c1daad3a550663327b3478c4f9ee15eeaf740b898f0100000017160014018958ab9e2b29b7313a39c1a62189affeac94a8ffffffff014808000000000000220020139742d10f03cdde1843ade9ab3aa2eb12398223a8ac6aa879fece363b9c311902483045022100f431ad4d213265531f600ebf242cabd3adcb7b5c27464ad080a34ce4fb4a5e5702206fad42768d29ee1121e19dc4489366d0c02a412e9d60431cac59d49642868c7b0121037a24a1d8a4e86946e89478f352bda9d6b40843e01b86af5c94b99634cbb0c6b200000000',
         txid: '43b2ac418539b61610c3ae2e216052d634b9b20fcece05940b5662fe5cf3f3b5',
@@ -1803,10 +1891,8 @@ describe('multisig-wallet (native segwit)', () => {
       },
       {
         address: 'bc1qn0j7y5hau6s8tdcpnxyyumck256lfet78ehpxdkytv5nt570dr4qxl9s3p',
-        amount: 10000,
         confirmations: 1,
         height: 668515,
-        txId: '3a2753147121c2ab312a419f0788cb534232d3c0bd4838de718487aca495ac7a',
         txhex:
           '02000000000101a1fba4a09a1a7ed090c64f15024de4b9008b6ec4ee5e336f0f0fc43f78022dfa01000000171600142f78bf055b26feb8f2f6b3caa5956b991c507e49ffffffff0210270000000000002200209be5e252fde6a075b70199884e6f165535f4e57e3e6e1336c45b2935d3cf68ea9a8705000000000017a91484d55f28fc28676c5f195ce649851428ec5010a3870248304502210098a970398bc40a34423d5661ecc499240bb0edb6e6bea74a752269f92e588b1b022031fcdf66c4ed8378f352a5a096c438e7a8c1415c47c119a4c69ef787e1cdf5d9012102ade0a25d66406f67dc3e4a6c8bedd989dd3ceed7a623fb4c2839a84b5262ca0900000000',
         txid: '3a2753147121c2ab312a419f0788cb534232d3c0bd4838de718487aca495ac7a',
@@ -1829,6 +1915,133 @@ describe('multisig-wallet (native segwit)', () => {
     assert.strictEqual(psbt.data.inputs.length, 2);
     assert.strictEqual(psbt.data.outputs.length, 1);
   });
+
+  it('can generate proper addresses for wallets with passphrases. Export and import such wallet', () => {
+    // test case from https://github.com/BlueWallet/BlueWallet/issues/3665#issuecomment-907377442
+    const path = "m/48'/0'/0'/2'";
+    const w = new MultisigHDWallet();
+    w.addCosigner(
+      'salon smoke bubble dolphin powder govern rival sport better arrest certain manual',
+      undefined,
+      undefined,
+      '9WDdFSZX4d6mPxkr',
+    );
+    w.addCosigner('chaos word void picture gas update shop wave task blossom close inner', undefined, undefined, 'E5jMAzsf464Hgwns');
+    w.addCosigner(
+      'plate inform scissors pill asset scatter people emotion dose primary together expose',
+      undefined,
+      undefined,
+      'RyBFfLr7weK3nDUG',
+    );
+    w.setDerivationPath(path);
+    w.setM(2);
+
+    assert.strictEqual(w.getCosignerPassphrase(1), '9WDdFSZX4d6mPxkr');
+    assert.strictEqual(w.getCosignerPassphrase(2), 'E5jMAzsf464Hgwns');
+    assert.strictEqual(w.getCosignerPassphrase(3), 'RyBFfLr7weK3nDUG');
+    assert.strictEqual(w._getExternalAddressByIndex(0), 'bc1q8rks34ypj5edxx82f7z7yzy4qy6dynfhcftjs9axzr2ml37p4pfs7j4uvm');
+    assert.strictEqual(w._getInternalAddressByIndex(0), 'bc1qjpjgumzs2afrr3mk85anwdnzd9qg5hc5p6f62un4umpyf4ccde5q4cywgy');
+
+    const w2 = new MultisigHDWallet();
+    w2.setSecret(w.getSecret());
+
+    assert.strictEqual(w._getExternalAddressByIndex(0), w2._getExternalAddressByIndex(0));
+    assert.strictEqual(w._getExternalAddressByIndex(1), w2._getExternalAddressByIndex(1));
+    assert.strictEqual(w.getCosignerPassphrase(1), w2.getCosignerPassphrase(1));
+    assert.strictEqual(w.getCosignerPassphrase(2), w2.getCosignerPassphrase(2));
+    assert.strictEqual(w.getCosignerPassphrase(3), w2.getCosignerPassphrase(3));
+  });
+
+  it('can work with passphrases when seeds are the same but passwords differ', () => {
+    // test case from https://github.com/BlueWallet/BlueWallet/issues/3665#issuecomment-907377442
+    const path = "m/48'/0'/0'/2'";
+    const w = new MultisigHDWallet();
+    w.addCosigner(
+      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
+      undefined,
+      undefined,
+      '1',
+    );
+    w.addCosigner(
+      'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about',
+      undefined,
+      undefined,
+      '2',
+    );
+    w.setDerivationPath(path);
+    w.setM(2);
+
+    assert.strictEqual(w.getCosignerPassphrase(1), '1');
+    assert.strictEqual(w.getCosignerPassphrase(2), '2');
+
+    assert.strictEqual(w._getExternalAddressByIndex(0), 'bc1qhlxgpu8deq24p3hgyh0f9zkj3uxzg2hcs4ccfy65cr9fg8vm30tqdlssmv');
+
+    assert.strictEqual(
+      w.convertXpubToMultisignatureXpub(
+        MultisigHDWallet.seedToXpub(w.getCosigner(1), w.getCustomDerivationPathForCosigner(1), w.getCosignerPassphrase(1)),
+      ),
+      'Zpub74GDyQuS45cpaH8C24Mfrk3Kvrtw78ZtX918Wj4T7dBQSW5BMcxiJAYh95Upjf9ywSbzomNf1SqVrzeZLpwxBjH488uWNaFWkXv1B93HRe7',
+    );
+
+    //
+
+    const w2 = new MultisigHDWallet();
+    w2.setSecret(w.getSecret());
+
+    assert.strictEqual(w._getExternalAddressByIndex(0), w2._getExternalAddressByIndex(0));
+    assert.strictEqual(w._getExternalAddressByIndex(1), w2._getExternalAddressByIndex(1));
+    assert.strictEqual(w.getCosignerPassphrase(1), w2.getCosignerPassphrase(1));
+    assert.strictEqual(w.getCosignerPassphrase(2), w2.getCosignerPassphrase(2));
+
+    const w3coordinator = new MultisigHDWallet();
+    w3coordinator.setSecret(w.getXpub());
+    assert.strictEqual(w3coordinator.getFingerprint(1), '126CF4F5');
+    assert.strictEqual(
+      w3coordinator.getCosigner(1),
+      'Zpub74GDyQuS45cpaH8C24Mfrk3Kvrtw78ZtX918Wj4T7dBQSW5BMcxiJAYh95Upjf9ywSbzomNf1SqVrzeZLpwxBjH488uWNaFWkXv1B93HRe7',
+    );
+
+    assert.strictEqual(w._getExternalAddressByIndex(0), w3coordinator._getExternalAddressByIndex(0));
+    assert.strictEqual(w._getInternalAddressByIndex(0), w3coordinator._getInternalAddressByIndex(0));
+  });
+
+  it('can import descriptor from Sparrow', () => {
+    const payload =
+      'UR:CRYPTO-OUTPUT/TAADMETAADMSOEADAOAOLSTAADDLOLAOWKAXHDCLAOCEBDFLNNTKJTIOJSFSURBNFXRPEEHKDLGYRTEMRPYTGYZOCASWENCYMKPAVWJKHYAAHDCXJEFTGSZOIMFEYNDYHYZEJTBAMSJEHLDSRDDIYLSRFYTSZTKNRNYLRNDPAMTLDPZCAHTAADEHOEADAEAOAEAMTAADDYOTADLOCSDYYKAEYKAEYKAOYKAOCYUOHFJPKOAXAAAYCYCSYASAVDTAADDLOLAOWKAXHDCLAXMSZTWZDIGERYDKFSFWTYDPFNDKLNAYSWTTMUHYZTOXHSETPEWSFXPEAYWLJSDEMTAAHDCXSPLTSTDPNTLESANSUTTLPRPFHNVSPFCNMHESOYGASTLRPYVAATNNDKFYHLQZPKLEAHTAADEHOEADAEAOAEAMTAADDYOTADLOCSDYYKAEYKAEYKAOYKAOCYWZFEPLETAXAAAYCYCPCKRENBTAADDLOLAOWKAXHDCLAOLSFWYKYLKTFHJLPYEMGLCEDPFNSNRDDSRFASEOZTGWIALFLUIYDNFXHGVESFEMMEAAHDCXHTZETLJNKPHHAYLSCXWPNDSWPSTPGTEOJKKGHDAELSKPNNBKBSYAWZJTFWNNBDKTAHTAADEHOEADAEAOAEAMTAADDYOTADLOCSDYYKAEYKAEYKAOYKAOCYSKTPJPMSAXAAAYCYCEBKWLAMTDWZGRZE\n';
+    const decoder = new BlueURDecoder();
+    decoder.receivePart(payload);
+
+    const data = decoder.toString();
+
+    const w = new MultisigHDWallet();
+    w.setSecret(data);
+
+    assert.strictEqual(w.getM(), 2);
+    assert.strictEqual(w.getN(), 3);
+    assert.strictEqual(w.getFingerprint(1), 'DC567276');
+    assert.strictEqual(w.getFingerprint(2), 'F245AE38');
+    assert.strictEqual(w.getFingerprint(3), 'C5D87297');
+    assert.strictEqual(w.isNativeSegwit(), true);
+    assert.strictEqual(w.getCustomDerivationPathForCosigner(1), "m/48'/0'/0'/2'");
+    assert.strictEqual(w.getCustomDerivationPathForCosigner(2), "m/48'/0'/0'/2'");
+    assert.strictEqual(w.getCustomDerivationPathForCosigner(3), "m/48'/0'/0'/2'");
+    assert.strictEqual(w.getFormat(), 'p2wsh');
+
+    assert.strictEqual(
+      w.getCosigner(1),
+      'xpub6DiYrfRwNnjeX4vHsWMajJVFKrbEEnu8gAW9vDuQzgTWEsEHE16sGWeXXUV1LBWQE1yCTmeprSNcqZ3W74hqVdgDbtYHUv3eM4W2TEUhpan',
+    );
+    assert.strictEqual(
+      w.getCosigner(2),
+      'xpub6DnT4E1fT8VxuAZW29avMjr5i99aYTHBp9d7fiLnpL5t4JEprQqPMbTw7k7rh5tZZ2F5g8PJpssqrZoebzBChaiJrmEvWwUTEMAbHsY39Ge',
+    );
+    assert.strictEqual(
+      w.getCosigner(3),
+      'xpub6DjrnfAyuonMaboEb3ZQZzhQ2ZEgaKV2r64BFmqymZqJqviLTe1JzMr2X2RfQF892RH7MyYUbcy77R7pPu1P71xoj8cDUMNhAMGYzKR4noZ',
+    );
+
+    assert.strictEqual(w._getExternalAddressByIndex(0), 'bc1q4taqq6q6l8fvguva6ftvrz3qgdjy6p3w2s0ds0nl6qrjw7t0hfhqgrqcwd');
+  });
 });
 
 describe('multisig-cosigner', () => {
@@ -1847,7 +2060,8 @@ describe('multisig-cosigner', () => {
   });
 
   it('can parse cobo json, if xpub is plain xpub (not Zpub or Ypub)', () => {
-    let xpub = MultisigCosigner._zpubToXpub(Zpub1);
+    const tempWallet = new MultisigHDWallet();
+    let xpub = tempWallet._zpubToXpub(Zpub1);
     assert.ok(xpub.startsWith('xpub'));
     let cosigner = new MultisigCosigner(`{"xfp":"${fp1cobo}","xpub":"${xpub}","path":"${MultisigHDWallet.PATH_NATIVE_SEGWIT}"}`);
     assert.ok(cosigner.isValid());
@@ -1862,7 +2076,7 @@ describe('multisig-cosigner', () => {
     //
 
     const Ypub1 = 'Ypub6jtUX12KGcqFosZWP4YcHc9qbKRTvgBpb8aE58hsYqby3SQVTr5KGfMmdMg38ekmQ9iLhCdgbAbjih7AWSkA7pgRhiLfah3zT6u1PFvVEbc';
-    xpub = MultisigCosigner._zpubToXpub(Ypub1);
+    xpub = tempWallet._zpubToXpub(Ypub1);
     assert.ok(xpub.startsWith('xpub'));
     cosigner = new MultisigCosigner(`{"xfp":"${fp1cobo}","xpub":"${xpub}","path":"${MultisigHDWallet.PATH_WRAPPED_SEGWIT}"}`);
     assert.ok(cosigner.isValid());
@@ -1876,7 +2090,7 @@ describe('multisig-cosigner', () => {
 
     //
 
-    xpub = MultisigCosigner._zpubToXpub(Ypub1);
+    xpub = tempWallet._zpubToXpub(Ypub1);
     assert.ok(xpub.startsWith('xpub'));
     cosigner = new MultisigCosigner(`{"xfp":"${fp1cobo}","xpub":"${xpub}","path":"${MultisigHDWallet.PATH_LEGACY}"}`);
     assert.ok(cosigner.isValid());
@@ -1944,9 +2158,9 @@ describe('multisig-cosigner', () => {
   it('cant parse bs', () => {
     const cosigner = new MultisigCosigner('asdfasdgsqwrgqwegq');
     assert.ok(!cosigner.isValid());
-    assert.strictEqual(cosigner.getFp(), false);
-    assert.strictEqual(cosigner.getXpub(), false);
-    assert.strictEqual(cosigner.getPath(), false);
+    assert.strictEqual(cosigner.getFp(), '');
+    assert.strictEqual(cosigner.getXpub(), '');
+    assert.strictEqual(cosigner.getPath(), '');
   });
 
   it('can parse file from coldcard with multiple xpubs (for different formats)', () => {
@@ -1964,9 +2178,9 @@ describe('multisig-cosigner', () => {
     const cosigner = new MultisigCosigner(cc);
     assert.strictEqual(cosigner.howManyCosignersWeHave(), 3);
     assert.ok(cosigner.isValid());
-    assert.strictEqual(cosigner.getFp(), false);
-    assert.strictEqual(cosigner.getXpub(), false);
-    assert.strictEqual(cosigner.getPath(), false);
+    assert.strictEqual(cosigner.getFp(), '');
+    assert.strictEqual(cosigner.getXpub(), '');
+    assert.strictEqual(cosigner.getPath(), '');
 
     const [c1, c2, c3] = cosigner.getAllCosigners();
 
@@ -1994,16 +2208,42 @@ describe('multisig-cosigner', () => {
 
   it('can parse files from sparrow wallet', () => {
     const secrets = [
-      JSON.stringify(require('./fixtures/fromsparrow-electrum.json')),
-      require('fs').readFileSync('./tests/unit/fixtures/fromsparrow-coldcard.txt', 'ascii'),
-      JSON.stringify(require('./fixtures/fromsparrow-specter.json')),
+      [JSON.stringify(require('./fixtures/fromsparrow-electrum.json')), false],
+      [require('fs').readFileSync('./tests/unit/fixtures/fromsparrow-coldcard.txt', 'ascii'), true],
+      [JSON.stringify(require('./fixtures/fromsparrow-specter.json')), true],
+      [JSON.stringify(require('./fixtures/caravan-multisig.json')), true],
     ];
 
-    for (const s of secrets) {
+    for (const [s, verifyFingerprints] of secrets) {
       const w = new MultisigHDWallet();
       w.setSecret(s);
 
+      if (verifyFingerprints) {
+        assert.strictEqual(w.getFingerprint(1), 'A3909080');
+        assert.strictEqual(w.getFingerprint(2), '7AB71DF0');
+        assert.strictEqual(w.getFingerprint(3), 'F11B9FF2');
+      }
+
+      assert.ok(w.isNativeSegwit());
       assert.strictEqual(w._getExternalAddressByIndex(0), 'bc1qtysquqsjqjfqvhd6l2h470hdgwhcahs4nq2ca49cyxftwjnjt9ssh8emel');
+    }
+  });
+
+  it('can parse files from Nunchuck', () => {
+    const secrets = [[require('fs').readFileSync('./tests/unit/fixtures/nunchuck-bsms.txt', 'ascii'), true]];
+
+    for (const [s, verifyFingerprints] of secrets) {
+      const w = new MultisigHDWallet();
+      w.setSecret(s);
+
+      if (verifyFingerprints) {
+        assert.strictEqual(w.getFingerprint(1), '3F5E4E09');
+        assert.strictEqual(w.getFingerprint(2), 'B96BC7C7');
+        assert.strictEqual(w.getFingerprint(3), '44437F41');
+      }
+
+      assert.ok(w.isNativeSegwit());
+      assert.strictEqual(w._getExternalAddressByIndex(0), 'bc1qjppd555998lvpgdew30kdrvu2qg90n5gg684khrc2u5g7kj8cnuqujvz3p');
     }
   });
 

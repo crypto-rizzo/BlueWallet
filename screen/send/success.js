@@ -1,22 +1,26 @@
 import React, { useEffect, useRef } from 'react';
-import PropTypes from 'prop-types';
-import LottieView from 'lottie-react-native';
-import { View, StyleSheet, SafeAreaView } from 'react-native';
-import { Text } from 'react-native-elements';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import BigNumber from 'bignumber.js';
-import { useNavigation, useRoute, useTheme } from '@react-navigation/native';
-
-import { BlueButton, BlueCard } from '../../BlueComponents';
-import { BitcoinUnit } from '../../models/bitcoinUnits';
+import LottieView from 'lottie-react-native';
+import PropTypes from 'prop-types';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@rneui/themed';
+import { BlueCard } from '../../BlueComponents';
+import Button from '../../components/Button';
+import SafeArea from '../../components/SafeArea';
+import { useTheme } from '../../components/themes';
 import loc from '../../loc';
+import { BitcoinUnit } from '../../models/bitcoinUnits';
+import HandOffComponent from '../../components/HandOffComponent';
+import { HandOffActivityType } from '../../components/types';
 
 const Success = () => {
   const pop = () => {
-    dangerouslyGetParent().pop();
+    getParent().pop();
   };
   const { colors } = useTheme();
-  const { dangerouslyGetParent } = useNavigation();
-  const { amount, fee, amountUnit = BitcoinUnit.BTC, invoiceDescription = '', onDonePressed = pop } = useRoute().params;
+  const { getParent } = useNavigation();
+  const { amount, fee, amountUnit = BitcoinUnit.BTC, invoiceDescription = '', onDonePressed = pop, txid } = useRoute().params;
   const stylesHook = StyleSheet.create({
     root: {
       backgroundColor: colors.elevated,
@@ -30,11 +34,10 @@ const Success = () => {
   });
   useEffect(() => {
     console.log('send/success - useEffect');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <SafeAreaView style={[styles.root, stylesHook.root]}>
+    <SafeArea style={[styles.root, stylesHook.root]}>
       <SuccessView
         amount={amount}
         amountUnit={amountUnit}
@@ -43,9 +46,16 @@ const Success = () => {
         onDonePressed={onDonePressed}
       />
       <View style={styles.buttonContainer}>
-        <BlueButton onPress={onDonePressed} title={loc.send.success_done} />
+        <Button onPress={onDonePressed} title={loc.send.success_done} />
       </View>
-    </SafeAreaView>
+      {txid && (
+        <HandOffComponent
+          title={loc.transactions.details_title}
+          type={HandOffActivityType.ViewInBlockExplorer}
+          url={`https://mempool.space/tx/${txid}`}
+        />
+      )}
+    </SafeArea>
   );
 };
 
@@ -65,33 +75,41 @@ export const SuccessView = ({ amount, amountUnit, fee, invoiceDescription, shoul
   });
 
   useEffect(() => {
-    if (shouldAnimate) {
-      animationRef.current.reset();
-      animationRef.current.resume();
+    if (shouldAnimate && animationRef.current) {
+      /*
+      https://github.com/lottie-react-native/lottie-react-native/issues/832#issuecomment-1008209732
+      Temporary workaround until Lottie is fixed.
+      */
+      setTimeout(() => {
+        animationRef.current?.reset();
+        animationRef.current?.play();
+      }, 100);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [colors]);
+  }, [colors, shouldAnimate]);
 
   return (
     <View style={styles.root}>
-      <BlueCard style={styles.amount}>
-        <View style={styles.view}>
-          {amount ? (
-            <>
-              <Text style={[styles.amountValue, stylesHook.amountValue]}>{amount}</Text>
-              <Text style={[styles.amountUnit, stylesHook.amountUnit]}>{' ' + loc.units[amountUnit]}</Text>
-            </>
-          ) : null}
-        </View>
-        {fee > 0 && (
-          <Text style={styles.feeText}>
-            {loc.send.create_fee}: {new BigNumber(fee).toFixed()} {loc.units[BitcoinUnit.BTC]}
+      {amount || fee > 0 ? (
+        <BlueCard style={styles.amount}>
+          <View style={styles.view}>
+            {amount ? (
+              <>
+                <Text style={[styles.amountValue, stylesHook.amountValue]}>{amount}</Text>
+                <Text style={[styles.amountUnit, stylesHook.amountUnit]}>{' ' + loc.units[amountUnit]}</Text>
+              </>
+            ) : null}
+          </View>
+          {fee > 0 && (
+            <Text style={styles.feeText}>
+              {loc.send.create_fee}: {new BigNumber(fee).toFixed()} {loc.units[BitcoinUnit.BTC]}
+            </Text>
+          )}
+          <Text numberOfLines={0} style={styles.feeText}>
+            {invoiceDescription}
           </Text>
-        )}
-        <Text numberOfLines={0} style={styles.feeText}>
-          {invoiceDescription}
-        </Text>
-      </BlueCard>
+        </BlueCard>
+      ) : null}
+
       <View style={styles.ready}>
         <LottieView
           style={styles.lottie}
@@ -114,6 +132,7 @@ export const SuccessView = ({ amount, amountUnit, fee, invoiceDescription, shoul
               color: colors.successCheck,
             },
           ]}
+          resizeMode="center"
         />
       </View>
     </View>
@@ -172,7 +191,7 @@ const styles = StyleSheet.create({
     marginBottom: 53,
   },
   lottie: {
-    width: 400,
-    height: 400,
+    width: 200,
+    height: 200,
   },
 });

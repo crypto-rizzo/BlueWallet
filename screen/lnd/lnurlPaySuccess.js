@@ -1,14 +1,14 @@
 import React, { Component } from 'react';
-import PropTypes from 'prop-types';
-import LottieView from 'lottie-react-native';
-import { View, Text, Linking, StyleSheet, Image, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Icon } from 'react-native-elements';
-
-import { BlueButton, BlueButtonLink, BlueCard, BlueLoading, BlueSpacing20, BlueText, SafeBlueArea } from '../../BlueComponents';
-import navigationStyle from '../../components/navigationStyle';
+import PropTypes from 'prop-types';
+import { Image, Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { BlueButtonLink, BlueCard, BlueLoading, BlueSpacing20, BlueSpacing40, BlueText } from '../../BlueComponents';
 import Lnurl from '../../class/lnurl';
+import Button from '../../components/Button';
+import SafeArea from '../../components/SafeArea';
 import loc from '../../loc';
+import { SuccessView } from '../send/success';
+import { popToTop } from '../../NavigationService';
 
 export default class LnurlPaySuccess extends Component {
   constructor(props) {
@@ -73,28 +73,20 @@ export default class LnurlPaySuccess extends Component {
     const { preamble, message, url, justPaid } = this.state;
 
     return (
-      <SafeBlueArea style={styles.root}>
-        <ScrollView>
-          {justPaid ? (
-            <View style={styles.iconContainer}>
-              <LottieView style={styles.icon} source={require('../../img/bluenice.json')} autoPlay loop={false} />
-            </View>
-          ) : (
-            <View style={styles.iconContainer}>
-              <Icon name="check" size={50} type="font-awesome" color="#0f5cc0" />
-            </View>
-          )}
+      <SafeArea style={styles.root}>
+        <ScrollView style={styles.container}>
+          {justPaid && <SuccessView />}
 
-          <BlueSpacing20 />
+          <BlueSpacing40 />
           <BlueText style={styles.alignSelfCenter}>{domain}</BlueText>
-          <BlueText style={styles.alignSelfCenter}>{description}</BlueText>
+          <BlueText style={[styles.alignSelfCenter, styles.description]}>{description}</BlueText>
           {image && <Image style={styles.img} source={{ uri: image }} />}
           <BlueSpacing20 />
 
           {(preamble || url || message) && (
             <BlueCard>
               <View style={styles.successContainer}>
-                <Text style={styles.successText}>{preamble}</Text>
+                <BlueText style={styles.successText}>{preamble}</BlueText>
                 {url ? (
                   <BlueButtonLink
                     title={url}
@@ -103,9 +95,7 @@ export default class LnurlPaySuccess extends Component {
                     }}
                   />
                 ) : (
-                  <Text selectable style={{ ...styles.successText, ...styles.successValue }}>
-                    {message}
-                  </Text>
+                  <BlueText selectable>{message}</BlueText>
                 )}
               </View>
             </BlueCard>
@@ -113,30 +103,30 @@ export default class LnurlPaySuccess extends Component {
 
           <BlueCard>
             {repeatable ? (
-              <BlueButton
+              <Button
                 onPress={() => {
                   this.props.navigation.navigate('ScanLndInvoiceRoot', {
                     screen: 'LnurlPay',
                     params: {
-                      lnurl: lnurl,
+                      lnurl,
                       walletID: this.state.fromWalletID,
                     },
                   });
                 }}
-                title="repeat"
+                title="repeat" // TODO: translate this
                 icon={{ name: 'refresh', type: 'font-awesome', color: '#9aa0aa' }}
               />
             ) : (
-              <BlueButton
+              <Button
                 onPress={() => {
-                  this.props.navigation.dangerouslyGetParent().popToTop();
+                  popToTop();
                 }}
                 title={loc.send.success_done}
               />
             )}
           </BlueCard>
         </ScrollView>
-      </SafeBlueArea>
+      </SafeArea>
     );
   }
 }
@@ -145,7 +135,7 @@ LnurlPaySuccess.propTypes = {
   navigation: PropTypes.shape({
     navigate: PropTypes.func,
     pop: PropTypes.func,
-    dangerouslyGetParent: PropTypes.func,
+    getParent: PropTypes.func,
   }),
   route: PropTypes.shape({
     name: PropTypes.string,
@@ -165,21 +155,8 @@ const styles = StyleSheet.create({
   root: {
     padding: 0,
   },
-  iconContainer: {
-    backgroundColor: '#ccddf9',
-    width: 120,
-    height: 120,
-    maxWidth: 120,
-    maxHeight: 120,
-    padding: 0,
-    borderRadius: 60,
-    alignSelf: 'center',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  icon: {
-    width: 400,
-    height: 400,
+  container: {
+    paddingHorizontal: 16,
   },
   successContainer: {
     marginTop: 10,
@@ -188,14 +165,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     margin: 4,
   },
-  successValue: {
-    fontWeight: 'bold',
+  description: {
+    marginTop: 20,
   },
-});
-
-LnurlPaySuccess.navigationOptions = navigationStyle({
-  title: '',
-  closeButton: true,
-  headerHideBackButton: true,
-  closeButtonFunc: ({ navigation }) => navigation.dangerouslyGetParent().popToTop(),
 });
